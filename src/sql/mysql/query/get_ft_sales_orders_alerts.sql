@@ -1,0 +1,32 @@
+SELECT
+   pdt_code,
+   pdt_name,
+   summary_sales_start_date,
+   summary_sales_end_date,
+   summary_sales_order_count,
+   summary_sales_min_price,
+   summary_sales_25_percentile_price,
+   summary_sales_avg_price,
+   summary_sales_median_price,
+   summary_sales_75_percentile_price,
+   summary_sales_max_price,
+   summary_upper_sales_price_std_limit,
+   summary_upper_sales_price_iqr_limit,
+   summary_lower_sales_price_std_limit,
+   summary_lower_sales_price_iqr_limit,
+   summary_purchases_start_date,
+   summary_purchases_end_date,
+   summary_purchases_latest_date,
+   summary_purchases_latest_price,
+   summary_purchases_order_count,
+   summary_purchases_avg_price,
+   summary_purchases_min_price,
+   summary_purchases_25_percentile_price,
+   summary_purchases_median_price,
+   summary_purchases_75_percentile_price,
+   summary_purchases_max_price,
+   base_price
+FROM
+   ft_pdt_summary;
+
+

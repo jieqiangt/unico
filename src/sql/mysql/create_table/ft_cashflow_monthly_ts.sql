@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS ft_cashflow_monthly_ts (
+    agg_date DATE NOT NULL,
+    outgoing NUMERIC(10,2) NOT NULL,
+    incoming NUMERIC(10,2) NOT NULL,
+    diff NUMERIC(10,2) NOT NULL,
+    created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (agg_date)
+);
