@@ -1,6 +1,13 @@
-/data
+/data*
 /venv
 
 *.bat
 /notes
 .env
+
+*.pyc
+*.csv
+*.txt
+*.xlsx
+*.pem
+*.ipynb

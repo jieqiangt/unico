@@ -3,11 +3,14 @@ WITH accounts_receivable AS (
         DATEFROMPARTS(YEAR(OINV.DocDate), MONTH(OINV.DocDate), 1) AS 'agg_date',
         OINV.CardCode AS 'customer_code',
         OCRD.CardName AS 'customer_name',
-        COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName) AS 'customer_group_name',
+        CASE
+            WHEN OCRD.U_AF_CUSTGROUP = '' THEN OCRD.CardName
+            ELSE COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName)
+        END AS 'customer_group_name',
         OCRG.GroupName AS 'customer_type',
         OINV.SlpCode AS 'sales_employee_code',
         OSLP.SlpName AS 'sales_employee_name',
-        SUM(OINV.DocTotal) AS 'amount_with_tax'
+        SUM(OINV.DocTotal) - SUM(OINV.PaidToDate) AS 'amount_with_tax'
     FROM
         OINV
         LEFT JOIN OCRD ON OINV.CardCode = OCRD.CardCode
@@ -16,12 +19,14 @@ WITH accounts_receivable AS (
     WHERE
         OINV.DocDate BETWEEN {{start_date}} AND {{end_date}}
         AND OINV.CANCELED = 'N'
-        AND OINV.DocStatus = 'O'
     GROUP BY
         DATEFROMPARTS(YEAR(OINV.DocDate), MONTH(OINV.DocDate), 1),
         OINV.CardCode,
         OCRD.CardName,
-        COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName),
+        CASE
+            WHEN OCRD.U_AF_CUSTGROUP = '' THEN OCRD.CardName
+            ELSE COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName)
+        END,
         OCRG.GroupName,
         OINV.SlpCode,
         OSLP.SlpName

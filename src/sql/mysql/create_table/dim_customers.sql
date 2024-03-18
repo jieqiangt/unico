@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS dim_customers (
     customer_code VARCHAR(25),
     name VARCHAR(100) NOT NULL,
+    customer_group_name VARCHAR(100) NOT NULL,
+    sales_employee VARCHAR(100) NOT NULL,
     entity_type VARCHAR(1) NOT NULL,
     address VARCHAR(255),
     zipcode VARCHAR(255),

@@ -7,17 +7,24 @@ import pandas as pd
 
 def create_mssql_engine(driver, server, db_name, db_user, db_pw):
 
-    connection_string = f"DRIVER={driver};SERVER={server};DATABASE={db_name};UID={db_user};PWD={db_pw}"
+    connection_string = f"DRIVER={driver};SERVER={server};DATABASE={
+        db_name};UID={db_user};PWD={db_pw};TrustServerCertificate=yes"
     connection_url = URL.create(
         "mssql+pyodbc", query={"odbc_connect": connection_string})
     engine = create_engine(connection_url)
 
     return engine
 
-def create_mysql_engine(host, db_name, db_user, db_pw, ssl_ca, ssl_cert):
 
-    connection_url = f"mysql+pymysql://{db_user}:{db_pw}@{host}/{db_name}?ssl_ca={ssl_ca}"
-    engine = create_engine(connection_url)
+def create_mysql_engine(host, db_name, db_user, db_pw, ssl_ca=None):
+
+    if ssl_ca:
+        connection_url = f"mysql+pymysql://{db_user}:{db_pw}@{host}/{db_name}?ssl_ca={ssl_ca}"
+    else:
+        connection_url = f"mysql+pymysql://{db_user}:{db_pw}@{host}/{db_name}"
+
+    engine = create_engine(
+        connection_url, insertmanyvalues_page_size=3000, use_insertmanyvalues=True)
 
     return engine
 
@@ -38,7 +45,6 @@ def get_query_from_sql_file(file_name, params=None):
 def execute_in_mysql(conn, file_path, params=None):
 
     # do a connection check to check if it is a mysql connection
-    print(params)
     query = get_query_from_sql_file(file_path, params)
     print(query)
     data = conn.execute(query)

@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS ft_pdt_loss_summary (
     pdt_code VARCHAR(25) NOT NULL,
     total_profit_loss NUMERIC(10,2),
-    avg_pc1_margin NUMERIC(10,2),
     num_losses NUMERIC(10,2),
     total_losses NUMERIC(10,2),
     sample_start_date DATETIME NOT NULL,
