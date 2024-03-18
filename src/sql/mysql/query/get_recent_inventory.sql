@@ -1,7 +1,7 @@
 SELECT
     as_of_date,
     pdt_code,
-    SUM(on_hand) AS 'qty'
+    SUM(inv_qty) AS 'qty'
 FROM
     ft_warehouse_inventory_ts
 WHERE
