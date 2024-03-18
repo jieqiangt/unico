@@ -5,4 +5,5 @@ SELECT
 FROM
 	OPCH
 WHERE
-	CANCELED = 'N';
+	CANCELED = 'N'
+	AND DocDate BETWEEN {{start_date}} AND {{end_date}};
