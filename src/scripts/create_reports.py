@@ -66,7 +66,7 @@ def create_ft_procurement_ops_report():
         pdt_base = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_procurement_ops_report.sql')
         inv = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_current_inventory.sql')
+            mysql_conn, f'./sql/mysql/query/get_current_inventory_value.sql')
 
     procurement_report = process_procurement_ops_report(pdt_base, inv)
 
@@ -408,32 +408,6 @@ def create_ft_current_inv_value():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def create_ft_current_inventory():
-
-    table = 'ft_current_inventory'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-
-    as_of_date = date.today()
-    as_of_date_str = as_of_date.strftime("%Y-%m-%d")
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"as_of_date": f"'{as_of_date_str}'"}
-        inventory = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/ft_current_inventory.sql', params)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {'table': table}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
-        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
-
-    with mysql_engine.connect() as mysql_conn:
-        inventory.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-
 def create_ft_current_account_balances():
 
     table = 'ft_current_account_balances'
