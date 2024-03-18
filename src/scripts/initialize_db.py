@@ -161,7 +161,7 @@ def init_ft_suppliers_monthly_pv_ts():
     table = 'ft_suppliers_monthly_pv_ts'
     with mssql_engine.connect() as mssql_conn:
         purchases = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/int_opch.sql')
+            mssql_conn, f'./sql/mssql/init/int_supplier_purchase_orders.sql')
 
     with mysql_engine.connect() as mysql_conn:
         suppliers = get_data_from_query(

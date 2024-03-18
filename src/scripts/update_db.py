@@ -45,9 +45,9 @@ def update_ft_cashflow_monthly_ts():
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         outgoing = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_outgoing.sql', params)
+            mssql_conn, f'./sql/mssql/init/int_outgoing.sql', params)
         incoming = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_incoming.sql', params)
+            mssql_conn, f'./sql/mssql/init/int_incoming.sql', params)
 
     cashflow_monthly_ts = process_ft_cashflow_monthly_ts(outgoing, incoming)
 
@@ -81,9 +81,9 @@ def update_ft_cashflow_monthly_by_type_ts():
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         outgoing = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_outgoing.sql', params)
+            mssql_conn, f'./sql/mssql/init/int_outgoing.sql', params)
         incoming = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_incoming.sql', params)
+            mssql_conn, f'./sql/mssql/init/int_incoming.sql', params)
 
     cashflow_monthly_by_type_ts = process_ft_cashflow_monthly_by_type_ts(
         outgoing, incoming)
@@ -118,7 +118,7 @@ def update_ft_suppliers_monthly_pv_ts():
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         purchases = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_opch.sql', params)
+            mssql_conn, f'./sql/mssql/init/int_supplier_purchase_orders.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         suppliers = get_data_from_query(
