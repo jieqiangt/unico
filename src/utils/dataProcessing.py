@@ -448,7 +448,6 @@ def process_sales_ops_report(pdt_base, inv_value):
 
     return report
 
-
 def process_procurement_ops_report(pdt_base, inv):
 
     inv = inv[['pdt_code','current_inv_qty']].copy()

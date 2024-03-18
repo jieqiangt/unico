@@ -44,14 +44,13 @@ from scripts.export_reports import export_current_inventory_report
 # update_ft_daily_pdt_processing_movement_ts()
 
 # create_dim_recent_processed_pdts()
-# create_ft_current_inventory()
+
 # create_ft_pdt_summary()
 # create_ft_sales_ops_report()
 # create_ft_procurement_ops_report()
 # create_ft_sales_orders_alerts()
 # create_ft_purchases_alerts()
 # create_ft_pdt_loss_summary()
-# create_ft_current_inv_value()
 # create_ft_current_account_balances()
 # create_ft_accounts_aging_ts()
 # create_ft_outstanding_ar_breakdown()
@@ -61,6 +60,10 @@ from scripts.export_reports import export_current_inventory_report
 # create_ft_customer_group_top_pdts()
 # create_ft_customer_churn()
 # create_ft_current_processing_movement()
+
 # create_ft_pdt_potential_customers()
 
 # export_current_inventory_report()
+
+
+
