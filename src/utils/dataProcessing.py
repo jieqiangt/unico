@@ -932,7 +932,7 @@ def process_ft_processed_pdt_daily_output_ts(processed_pdt_output, end_date_str)
     return resampled_processed_pdt_output
 
 
-def process_ft_daily_qty_value_tracking_ts(sales, inv, purchases, recent_price, start_date_str, end_date_str):
+def process_ft_daily_qty_value_tracking_ts(sales, inv, purchases, products, start_date_str, end_date_str):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
@@ -1012,6 +1012,9 @@ def process_ft_daily_qty_value_tracking_ts(sales, inv, purchases, recent_price, 
 
         tmp_inv['pdt_code'] = pdt_code
 
+        recent_price = products[['pdt_code','warehouse_calculated_avg_price']]
+        recent_price.rename(columns={'warehouse_calculated_avg_price': 'avg_price'}, inplace=True)
+        
         tmp_inv = tmp_inv.merge(recent_price, on='pdt_code')
         tmp_inv['value'] = tmp_inv['qty'] * tmp_inv['avg_price']
 
