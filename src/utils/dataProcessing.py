@@ -300,10 +300,10 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
             purchases_outside_sample, f'purchases')
         purchases_outside_sample_summary['summary_purchases_start_date'] = query_start_date_str
         purchases_outside_sample_summary['summary_purchases_end_date'] = end_date_str
-        
+
         purchases_summary = pd.concat(
             [purchases_within_sample_summary, purchases_outside_sample_summary], ignore_index=True)
-        
+
     else:
         purchases_summary = purchases_within_sample_summary.copy()
 
@@ -333,27 +333,30 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
 
     pdt_profit = profit[['pdt_code', 'profit_per_qty', 'total_profit', 'profit_margin']].groupby(
         'pdt_code').agg({'profit_per_qty': 'median', 'total_profit': 'sum', 'profit_margin': 'median'}).reset_index()
-    
-    purchases_summary.drop(columns='pdt_name',inplace=True)
-    sales_summary.drop(columns='pdt_name',inplace=True)
-    
+
+    purchases_summary.drop(columns='pdt_name', inplace=True)
+    sales_summary.drop(columns='pdt_name', inplace=True)
+
     # active_pdts = set(qty_processed[qty_processed['doc_date'] >= activity_cutoff_date_str]['pdt_code'].unique()).union(
     #               set(sales[sales['doc_date'] >= activity_cutoff_date_str]['pdt_code'].unique())).union(
     #               set(purchases[purchases['doc_date'] >= activity_cutoff_date_str]['pdt_code'].unique()))
-                  
-    active_pdts = list(sales[sales['doc_date'] >= activity_cutoff_date_str]['pdt_code'].unique())
-    
+
+    active_pdts = list(
+        sales[sales['doc_date'] >= activity_cutoff_date_str]['pdt_code'].unique())
+
     pdt_activity = products[['pdt_code']].copy()
-    pdt_activity.loc[pdt_activity['pdt_code'].isin(active_pdts), 'activity'] = 'active'
-    pdt_activity.loc[~pdt_activity['pdt_code'].isin(active_pdts), 'activity'] = 'inactive'
-    
+    pdt_activity.loc[pdt_activity['pdt_code'].isin(
+        active_pdts), 'activity'] = 'active'
+    pdt_activity.loc[~pdt_activity['pdt_code'].isin(
+        active_pdts), 'activity'] = 'inactive'
+
     pdt_summary = products.merge(sales_summary, how='left', on=['pdt_code']).merge(
         purchases_summary, how='left', on=['pdt_code']).merge(
             pdt_profit, how='left', on=['pdt_code']).merge(
                 num_loss_orders, how='left', on=['pdt_code']).merge(
                     total_losses, how='left', on=['pdt_code']).merge(
                     pdt_activity, how='left', on=['pdt_code']
-                    )
+    )
 
     return pdt_summary
 
@@ -448,12 +451,11 @@ def process_sales_ops_report(pdt_base, inv_value):
 
 def process_procurement_ops_report(pdt_base, inv):
 
-    agg_inv = inv.groupby(['pdt_code'])[
-        'on_hand'].sum().reset_index()
-    agg_inv.rename(
-        columns={"on_hand": "current_inv"}, inplace=True)
+    inv = inv[['pdt_code','current_inv_qty']].copy()
+    inv.rename(
+        columns={"current_inv_qty": "current_inv"}, inplace=True)
 
-    report = pdt_base.merge(agg_inv, on=['pdt_code'], how="left")
+    report = pdt_base.merge(inv, on=['pdt_code'], how="left")
 
     renamed_columns = {'summary_purchases_date_range': 'purchases_data_date_range',
                        'summary_purchases_latest_date': 'latest_purchases_date',
@@ -1107,54 +1109,40 @@ def process_ft_pdt_potential_customers(customers, pdts, sales):
         df_collate.append(temp_df)
 
     potential_customers = pd.concat(df_collate, ignore_index=True)
+
     return potential_customers
 
 
 def process_ft_current_processing_movement(processing_movement):
-    
+
     date_cols = get_date_cols(processing_movement)
     processing_movement = convert_dt_cols(processing_movement, date_cols)
 
     return processing_movement
+
 
 def process_ft_daily_pdt_processing_movement_ts(processing_movement):
-    
+
     date_cols = get_date_cols(processing_movement)
     processing_movement = convert_dt_cols(processing_movement, date_cols)
 
     return processing_movement
 
+
 def process_current_inventory_report(inv, file_name):
-    
+
     with pd.ExcelWriter(f'{file_name}.xlsx', engine='openpyxl') as writer:
-    
+
         for pdt_cat in inv['pdt_main_cat'].unique():
 
             output_sheet = inv[inv['pdt_main_cat'] == pdt_cat]
-            output_sheet = output_sheet.sort_values(by='available_inv', ascending=False)
+            output_sheet = output_sheet.sort_values(
+                by='available_inv', ascending=False)
             output_sheet.to_excel(writer, sheet_name=pdt_cat, index=False)
-            
+
             worksheet = writer.sheets[pdt_cat]
             for column in worksheet.columns:
-                
-                auto_adjust_column(worksheet,column)
+
+                auto_adjust_column(worksheet, column)
                 format_column_to_currency(column)
                 add_borders_to_column(column)
-                        
-                        
-                
-                    
-                    
-                    
-                    
-
-                
-
-                
-    
-    
-    
-    
-    
-
-
