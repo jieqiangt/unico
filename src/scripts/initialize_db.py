@@ -181,49 +181,9 @@ def init_ft_suppliers_monthly_pv_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
-
 def init_ft_warehouse_inventory_ts(start_date=None):
 
     table = 'ft_warehouse_inventory_ts'
-
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-
-    end_date = date.today()
-    end_date = date.today() + relativedelta(days=-3)
-
-    if start_date is None:
-        start_date = date.today().replace(day=1) + relativedelta(months=-36)
-        # start_date = end_date + relativedelta(days=-5)
-
-    data_collate = []
-
-    with mssql_engine.connect() as mssql_conn:
-        for as_of_date in pd.date_range(start_date, end_date, freq='d'):
-            print(as_of_date)
-            as_of_date_str = as_of_date.strftime("%Y-%m-%d")
-            params = {'as_of_date': f"'{as_of_date_str}'"}
-            data = get_data_from_query(
-                mssql_conn, f'./sql/mssql/init/{table}.sql', params)
-            data_collate.append(data)
-
-    inv = pd.concat(data_collate, ignore_index=True)
-
-    with mysql_engine.connect() as mysql_conn:
-        drop_table(mysql_conn, table)
-        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
-
-    with mysql_engine.connect() as mysql_conn:
-        inv.to_sql(table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-
-
-def init_ft_warehouse_inventory_ts_new(start_date=None):
-
-    table = 'ft_warehouse_inventory_ts_new'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)

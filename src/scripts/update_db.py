@@ -143,103 +143,6 @@ def update_ft_suppliers_monthly_pv_ts():
     mssql_engine.dispose()
 
 
-def update_ft_warehouse_inventory_ts():
-
-    table = 'ft_warehouse_inventory_ts'
-
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-
-    with mysql_engine.connect() as mysql_conn:
-        latest_date = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_latest_inv_date.sql')
-
-    latest_date = latest_date.values[0][0]
-    today = date.today()
-    delta = today - latest_date
-
-    inv_collate = []
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {'as_of_date': f"'{END_DATE_STR}'"}
-        today_inv = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/{table}.sql', params)
-
-    inv_collate.append(today_inv)
-    mssql_engine.dispose()
-
-    if delta.days > 1:
-        query_end_date = today + relativedelta(days=-1)
-        mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-        with mssql_engine.connect() as mssql_conn:
-
-            for as_of_date in pd.date_range(latest_date + relativedelta(days=1), query_end_date, freq='d'):
-                as_of_date_str = as_of_date.strftime("%Y-%m-%d")
-                params = {'as_of_date': f"'{as_of_date_str}'"}
-                daily_inv = get_data_from_query(
-                    mssql_conn, f'./sql/mssql/init/{table}.sql', params)
-                inv_collate.append(daily_inv)
-
-        mssql_engine.dispose()
-        
-    inv = pd.concat(inv_collate, ignore_index=True)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"table": f"{table}", "date_col": "as_of_date",
-                  "start_date": f"'{END_DATE_STR}'", "end_date": f"'{END_DATE_STR}'"}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
-        mysql_conn.commit()
-
-    with mysql_engine.connect() as mysql_conn:
-        inv.to_sql(table, con=mysql_conn, if_exists='append',
-                   index=False, chunksize=1000)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    
-def update_ft_warehouse_inventory_ts_new():
-
-    table = 'ft_warehouse_inventory_ts_new'
-
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-
-    with mysql_engine.connect() as mysql_conn:
-        latest_date = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_latest_inv_date.sql')
-
-    latest_date = latest_date.values[0][0]
-    latest_date_str = latest_date.strftime("%Y-%m-%d")
-
-    data_collate = []
-    
-    with mssql_engine.connect() as mssql_conn:
-        for as_of_date in pd.date_range(latest_date, END_DATE, freq='d'):
-            print(as_of_date)
-            as_of_date_str = as_of_date.strftime("%Y-%m-%d")
-            params = {'as_of_date': f"'{as_of_date_str}'"}
-            data = get_data_from_query(
-                    mssql_conn, f'./sql/mssql/init/{table}.sql', params)
-            data_collate.append(data)
-
-    inv = pd.concat(data_collate, ignore_index=True)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"table": f"{table}", "date_col": "as_of_date",
-                  "start_date": f"'{latest_date_str}'", "end_date": f"'{END_DATE_STR}'"}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
-        mysql_conn.commit()
-
-    with mysql_engine.connect() as mysql_conn:
-        inv.to_sql(table, con=mysql_conn, if_exists='append',
-                   index=False, chunksize=1000)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-
 def update_ft_sales_agent_performance_ts():
 
     table = 'ft_sales_agent_performance_ts'
@@ -661,9 +564,9 @@ def update_ft_daily_purchase_value_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def update_ft_warehouse_inventory_ts_new(start_date=None):
+def update_ft_warehouse_inventory_ts(start_date=None):
 
-    table = 'ft_warehouse_inventory_ts_new'
+    table = 'ft_warehouse_inventory_ts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -708,7 +611,7 @@ def update_ft_warehouse_inventory_ts_new(start_date=None):
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-
+    
 def update_ft_daily_pdt_processing_movement_ts():
 
     table = 'ft_daily_pdt_processing_movement_ts'
