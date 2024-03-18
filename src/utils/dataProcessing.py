@@ -350,7 +350,7 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
     pdt_activity.loc[~pdt_activity['pdt_code'].isin(
         active_pdts), 'last_7_days_sales_is_active'] = 'inactive'
 
-    products = products[['pdt_code','pdt_name','uom','base_pdt','new_pdt_ind']]
+    products = products[['pdt_code','pdt_name','uom','base_price','new_pdt_ind']]
     pdt_summary = products.merge(sales_summary, how='left', on=['pdt_code']).merge(
         purchases_summary, how='left', on=['pdt_code']).merge(
             pdt_profit, how='left', on=['pdt_code']).merge(

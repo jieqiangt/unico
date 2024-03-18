@@ -22,7 +22,7 @@ SELECT
     summary_sales_min_price,
     summary_sales_max_price,
     summary_sales_avg_qty_per_month,
-    new_pdt_indicator,
-    activity
+    new_pdt_ind,
+    last_7_days_sales_is_active
 FROM
     ft_pdt_summary;

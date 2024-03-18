@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS ft_sales_ops_report (
     latest_sales_price NUMERIC(10, 2),
     sales_min_price NUMERIC(10, 2),
     sales_max_price NUMERIC(10, 2),
-    new_pdt_indicator VARCHAR(3),
+    new_pdt_ind VARCHAR(3),
     activity VARCHAR(8),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
