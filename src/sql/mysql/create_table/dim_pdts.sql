@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS dim_pdts (
     foreign_pdt_name VARCHAR(500),
     processed_pdt_ind TINYINT(1),
     uom VARCHAR(50),
+    is_active VARCHAR(1),
+    new_pdt_indicator VARCHAR(3),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (pdt_code)
