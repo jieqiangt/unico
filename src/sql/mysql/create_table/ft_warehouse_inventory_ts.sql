@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS ft_warehouse_inventory_ts_new (
+CREATE TABLE IF NOT EXISTS ft_warehouse_inventory_ts (
     as_of_date DATE NOT NULL,
     pdt_code VARCHAR(25) NOT NULL,
     warehouse_code VARCHAR(25),
