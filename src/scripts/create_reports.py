@@ -111,7 +111,7 @@ def create_ft_pdt_summary():
         params = {"start_date": f"'{query_start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_pdt_base_price.sql', params)
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql', params)
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(
@@ -164,8 +164,8 @@ def create_ft_sales_orders_alerts():
                   "end_date": f"'{END_DATE_STR}'"}
         current_sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        processed_pdt_indicator = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_processed_pdt_indicator.sql',)
+        pdts = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql',)
 
     with mysql_olap_engine.connect() as mysql_conn:
         # execute_in_mysql(
@@ -180,7 +180,7 @@ def create_ft_sales_orders_alerts():
     mysql_olap_engine.dispose()
 
     sales_report = process_ft_sales_orders_alerts(
-        current_sales, pdt_summary, purchase_prices, processed_pdt_indicator)
+        current_sales, pdt_summary, purchase_prices, pdts)
 
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
@@ -606,8 +606,8 @@ def create_ft_customer_group_top_pdts():
                   "end_date": f"'{end_date_str}'"}
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        processed_pdt_indicator = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_processed_pdt_indicator.sql',)
+        pdts = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql',)
 
     with mysql_olap_engine.connect() as mysql_conn:
         # execute_in_mysql(
@@ -620,7 +620,7 @@ def create_ft_customer_group_top_pdts():
     mysql_olap_engine.dispose()
     mysql_engine = create_mysql_engine(**RDS_CREDS)
     
-    top_pdts = process_ft_customer_group_top_pdts(sales, purchase_prices, processed_pdt_indicator, start_date_str, end_date_str)
+    top_pdts = process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str)
     
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}

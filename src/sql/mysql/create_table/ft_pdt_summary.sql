@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS ft_pdt_summary (
     base_price NUMERIC(10, 2),
     total_loss NUMERIC(10,2),
     num_loss_orders INT,
-    new_pdt_indicator VARCHAR(3),
-    activity VARCHAR(8),
+    new_pdt_ind VARCHAR(3),
+    last_7_days_sales_is_active VARCHAR(8),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (pdt_code)

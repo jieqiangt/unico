@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS dim_pdts (
     processed_pdt_ind TINYINT(1),
     uom VARCHAR(50),
     is_active VARCHAR(1),
-    new_pdt_indicator VARCHAR(3),
+    new_pdt_ind VARCHAR(3),
+    base_price NUMERIC(10,2),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (pdt_code)

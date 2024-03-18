@@ -346,10 +346,11 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
 
     pdt_activity = products[['pdt_code']].copy()
     pdt_activity.loc[pdt_activity['pdt_code'].isin(
-        active_pdts), 'activity'] = 'active'
+        active_pdts), 'last_7_days_sales_is_active'] = 'active'
     pdt_activity.loc[~pdt_activity['pdt_code'].isin(
-        active_pdts), 'activity'] = 'inactive'
+        active_pdts), 'last_7_days_sales_is_active'] = 'inactive'
 
+    products = products[['pdt_code','pdt_name','uom','base_pdt','new_pdt_ind']]
     pdt_summary = products.merge(sales_summary, how='left', on=['pdt_code']).merge(
         purchases_summary, how='left', on=['pdt_code']).merge(
             pdt_profit, how='left', on=['pdt_code']).merge(
@@ -361,7 +362,7 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
     return pdt_summary
 
 
-def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, processed_pdt_indicator):
+def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, pdts):
 
     date_cols = get_date_cols(current_sales)
     current_sales = convert_dt_cols(current_sales, date_cols)
@@ -369,12 +370,14 @@ def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, 
     current_sales = current_sales[current_sales['price'] > 0.01]
     purchase_prices['as_of_date'] = pd.to_datetime(
         purchase_prices['as_of_date'])
+    
+    pdts = pdts[['pdt_code','processed_pdt_ind']]
 
     sales_orders_alerts = current_sales.merge(
         pdt_summary, on=['pdt_code', 'pdt_name'], how='left').merge(
             purchase_prices, left_on=['doc_date', 'pdt_code'], right_on=['as_of_date', 'pdt_code'], how='left')
     sales_orders_alerts = sales_orders_alerts.merge(
-        processed_pdt_indicator, on='pdt_code', how='left')
+        pdts, on='pdt_code', how='left')
 
     sales_orders_alerts['sales_price_alert'] = (
         ((sales_orders_alerts['price'] >
@@ -833,7 +836,7 @@ def process_ft_customer_group_price_check_flagged_orders(flagged_orders):
     return flagged_orders
 
 
-def process_ft_customer_group_top_pdts(sales, purchase_prices, processed_pdt_indicator, start_date_str, end_date_str):
+def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
@@ -844,6 +847,8 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, processed_pdt_ind
     purchase_prices.rename(
         columns={'weighted_price': 'purchase_price'}, inplace=True)
     purchase_prices.drop(columns=['previous_price'], inplace=True)
+    
+    pdts = pdts[['pdt_code','processed_pdt_ind']]
 
     sales_req_cols = ['doc_date', 'sales_employee_code', 'sales_employee',
                       'customer_group_name', 'pdt_code', 'pdt_name', 'qty', 'price']
@@ -879,7 +884,7 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, processed_pdt_ind
     ).reset_index().rename(columns={"pc1_margin": "median_pc1_margin"})
 
     customer_group_top_pdts = total_profit.merge(total_revenue, how='left', on=groupby_cols).merge(total_qty, how='left', on=groupby_cols).merge(
-        avg_pc1_margin, how='left', on=groupby_cols).merge(median_pc1_margin, how='left', on=groupby_cols).merge(processed_pdt_indicator, on=['pdt_code'], how='left')
+        avg_pc1_margin, how='left', on=groupby_cols).merge(median_pc1_margin, how='left', on=groupby_cols).merge(pdts, on=['pdt_code'], how='left')
 
     customer_group_top_pdts['sample_start_date'] = start_date_str
     customer_group_top_pdts['sample_end_date'] = end_date_str

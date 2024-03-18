@@ -11,7 +11,8 @@ SELECT
     CASE
         WHEN DATEDIFF(week, OITM.CreateDate, GETDATE()) < 3 THEN 'new'
         ELSE 'old'
-    END AS 'new_pdt_indicator'
+    END AS 'new_pdt_ind',
+    LstEvlPric AS 'base_price'
 FROM
     OITM
 ;
