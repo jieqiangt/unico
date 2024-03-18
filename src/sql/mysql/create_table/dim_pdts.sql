@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS dim_pdts (
     is_active VARCHAR(1),
     new_pdt_ind VARCHAR(3),
     base_price NUMERIC(10,2),
+    pdt_main_category VARCHAR(25),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (pdt_code)

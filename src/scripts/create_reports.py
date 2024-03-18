@@ -688,7 +688,7 @@ def create_ft_customer_churn():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         customers = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_active_customers.sql')
+            mssql_conn, f'./sql/mssql/init/dim_customers.sql')
 
     customer_churn = process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before_str)
 
@@ -723,7 +723,7 @@ def create_ft_pdt_potential_customers():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         active_customers = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_active_customers.sql')
+            mssql_conn, f'./sql/mssql/init/dim_customers.sql')
         pdts = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
 

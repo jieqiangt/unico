@@ -1037,21 +1037,24 @@ def process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before
     last_month_sales = sales[sales['doc_date'] >= last_month_str].copy()
     last_2_weeks_sales = sales[sales['doc_date']
                                >= two_weeks_before_str].copy()
+    
+    active_customers = customers.loc[customers['is_active'] == 'Y', :][['customer_code','name']]
+    active_customers.rename(columns={'name':'customer_name'},inplace=True)
 
     last_2_months_active_customers = sales['customer_code'].unique()
     last_month_active_customers = last_month_sales['customer_code'].unique()
     last_2_weeks_active_customers = last_2_weeks_sales['customer_code'].unique(
     )
 
-    customers.loc[customers['customer_code'].isin(
+    active_customers.loc[active_customers['customer_code'].isin(
         last_2_months_active_customers), 'activity'] = 'Bought Last 12 Months'
-    customers.loc[customers['customer_code'].isin(
+    active_customers.loc[active_customers['customer_code'].isin(
         last_month_active_customers), 'activity'] = 'Bought Last Month'
-    customers.loc[customers['customer_code'].isin(
+    active_customers.loc[active_customers['customer_code'].isin(
         last_2_weeks_active_customers), 'activity'] = 'Bought Last 2 Weeks'
-    customers.loc[customers['activity'] == 'nan', 'activity'] = 'Inactive'
+    active_customers.loc[active_customers['activity'] == 'nan', 'activity'] = 'Inactive'
 
-    return customers
+    return active_customers
 
 
 def process_ft_daily_sales_employee_value_ts(sales_value_ts):
@@ -1073,7 +1076,8 @@ def process_ft_daily_purchase_value_ts(purchase_value_ts):
 def process_ft_pdt_potential_customers(customers, pdts, sales):
 
     all_pdt_codes = list(pdts.loc[:, 'pdt_code'])
-    all_customer_codes = set(customers['customer_code'])
+        
+    all_customer_codes = set(customers.loc[customers['is_active'] == 'Y', 'customer_code'])
     current_pdt_customers = sales[['pdt_code', 'customer_code']].drop_duplicates(
         subset=['pdt_code', 'customer_code'])
     customer_total_sales = sales.groupby(['customer_code'])[
