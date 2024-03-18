@@ -1,1 +1,0 @@
-SELECT MAX(as_of_date) FROM int_pdt_purchase_price_ts;

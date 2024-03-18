@@ -1,23 +1,20 @@
 SELECT
     {{as_of_date}} AS 'as_of_date',
-    OITM.ItemCode AS 'pdt_code',
-    OITM.SalUnitMsr AS 'uom',
-    COALESCE(OINM.Warehouse, 'FP') AS 'warehouse_code',
-    COALESCE(SUM(OINM.InQty - OINM.OutQty), 0) AS 'on_hand',
-    0 AS 'is_committed',
-    0 AS 'on_order',
-    0 AS 'consig',
-    0 AS 'counted',
-    0 AS 'was_counted'
+    OINM.ItemCode AS 'pdt_code',
+    OINM.Warehouse AS 'warehouse_code',
+    SUM(OINM.InQty - OINM.OutQty) AS 'inv_qty',
+    IIF(
+        SUM(OINM.InQty - OINM.OutQty) = 0,
+        0,
+        (
+            SUM(OINM.TransValue) / SUM(OINM.InQty - OINM.OutQty)
+        )
+    ) AS 'avg_price',
+    SUM(OINM.TransValue) AS 'inv_value'
 FROM
-    OITM
-    LEFT JOIN OINM ON OITM.ItemCode = OINM.ItemCode
+    OINM
 WHERE
     OINM.DocDate <= {{as_of_date}}
 GROUP BY
-    OITM.ItemCode,
-    OITM.ItemName,
-    OITM.SalUnitMsr,
-    OINM.Warehouse
-HAVING
-    SUM(OINM.InQty - OINM.OutQty) <> 0;
+    OINM.Warehouse,
+    OINM.ItemCode;
