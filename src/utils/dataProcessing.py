@@ -350,7 +350,8 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
     pdt_activity.loc[~pdt_activity['pdt_code'].isin(
         active_pdts), 'last_7_days_sales_is_active'] = 'inactive'
 
-    products = products[['pdt_code','pdt_name','uom','base_price','new_pdt_ind']]
+    products = products[['pdt_code', 'pdt_name',
+                         'uom', 'base_price', 'new_pdt_ind']]
     pdt_summary = products.merge(sales_summary, how='left', on=['pdt_code']).merge(
         purchases_summary, how='left', on=['pdt_code']).merge(
             pdt_profit, how='left', on=['pdt_code']).merge(
@@ -370,8 +371,8 @@ def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, 
     current_sales = current_sales[current_sales['price'] > 0.01]
     purchase_prices['as_of_date'] = pd.to_datetime(
         purchase_prices['as_of_date'])
-    
-    pdts = pdts[['pdt_code','processed_pdt_ind']]
+
+    pdts = pdts[['pdt_code', 'processed_pdt_ind']]
 
     sales_orders_alerts = current_sales.merge(
         pdt_summary, on=['pdt_code', 'pdt_name'], how='left').merge(
@@ -428,32 +429,39 @@ def process_ft_purchases_alerts(purchases, pdt_summary):
     return purchases_alerts
 
 
-def process_sales_ops_report(pdt_base, inv_value):
+def process_sales_ops_report(products, pdt_stats, inv_value):
 
-    report = pdt_base.merge(inv_value, on='pdt_code', how="left")
+    products_req_cols = ['pdt_code', 'pdt_name', 'foreign_pdt_name', 'uom',
+                         'processed_pdt_ind', 'new_pdt_ind', 'pdt_main_category', 'base_price']
+    active_products = products[products['is_active'] == 'Y'][products_req_cols]
+    report = active_products.merge(pdt_stats, on='pdt_code', how='left').merge(
+        inv_value, on='pdt_code', how="left")
 
-    renamed_columns = {'summary_purchases_date_range': 'purchases_data_date_range',
-                       'summary_purchases_min_price': 'purchases_min_price',
-                       'summary_purchases_max_price': 'purchases_max_price',
-                       'summary_purchases_latest_date': 'latest_purchase_date',
-                       'summary_purchases_latest_price': 'latest_purchase_price',
-                       'summary_purchases_avg_qty_per_month': 'avg_purchase_qty_per_month',
-                       'summary_sales_date_range': 'sales_data_date_range',
-                       'summary_sales_latest_date': 'latest_sales_date',
-                       'summary_sales_latest_price': 'latest_sales_price',
-                       'summary_sales_min_price': 'sales_min_price',
-                       'summary_sales_max_price': 'sales_max_price',
-                       'summary_sales_avg_qty_per_month': 'avg_sales_qty_per_month'}
-    report.rename(columns=renamed_columns, inplace=True)
+    report['monthly_sales_qty_to_current_inv_ratio'] = report['current_inv_qty'] / \
+        report['avg_monthly_sales_qty']
+    report['sales_activity_category'] = 'NORMAL'
+    report.loc[report['monthly_sales_qty_to_current_inv_ratio']
+               > 4, 'sales_activity_category'] = 'SLOW SALES'
+    report.loc[report['monthly_sales_qty_to_current_inv_ratio']
+               > 0.5, 'sales_activity_category'] = 'REORDER'
+    report.loc[report['monthly_sales_qty_to_current_inv_ratio'].isna(),
+               'sales_activity_category'] = 'NO SALES'
+    
+    report.loc[report['processed_pdt_ind'] == 1, 'processed_pdt_ind'] = 'PROCESSED'
+    report.loc[report['processed_pdt_ind'] == 0, 'processed_pdt_ind'] = 'NORMAL'
 
-    report['avg_monthly_sales_to_inv_ratio'] = report['current_inv_qty'] / \
-        report['avg_sales_qty_per_month']
+    report['current_inv_qty'] = report['current_inv_qty'].fillna(0)
+    report['current_inv_value'] = report['current_inv_value'].fillna(0)
+    report['monthly_sales_qty_to_current_inv_ratio'] = report['monthly_sales_qty_to_current_inv_ratio'].fillna(0)
+    report['avg_weekly_sales_qty'] = report['avg_monthly_sales_qty'] * 12 / 52
+    report['avg_daily_sales_qty'] = report['avg_monthly_sales_qty'] * 12 / 365
 
     return report
 
+
 def process_procurement_ops_report(pdt_base, inv):
 
-    inv = inv[['pdt_code','current_inv_qty']].copy()
+    inv = inv[['pdt_code', 'current_inv_qty']].copy()
     inv.rename(
         columns={"current_inv_qty": "current_inv"}, inplace=True)
 
@@ -579,6 +587,9 @@ def process_ft_recent_sales(sales, purchase_prices):
     sales_with_purchase_price.rename(
         columns={'weighted_price': 'purchase_price'}, inplace=True)
     sales_with_purchase_price.drop(columns=['previous_price'], inplace=True)
+
+    sales_with_purchase_price['pc1'] = (sales_with_purchase_price['price'] -
+                                        sales_with_purchase_price['purchase_price'])/sales_with_purchase_price['price']
 
     return sales_with_purchase_price
 
@@ -847,8 +858,8 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_
     purchase_prices.rename(
         columns={'weighted_price': 'purchase_price'}, inplace=True)
     purchase_prices.drop(columns=['previous_price'], inplace=True)
-    
-    pdts = pdts[['pdt_code','processed_pdt_ind']]
+
+    pdts = pdts[['pdt_code', 'processed_pdt_ind']]
 
     sales_req_cols = ['doc_date', 'sales_employee_code', 'sales_employee',
                       'customer_group_name', 'pdt_code', 'pdt_name', 'qty', 'price']
@@ -1012,9 +1023,10 @@ def process_ft_daily_qty_value_tracking_ts(sales, inv, purchases, products, star
 
         tmp_inv['pdt_code'] = pdt_code
 
-        recent_price = products[['pdt_code','warehouse_calculated_avg_price']]
-        recent_price.rename(columns={'warehouse_calculated_avg_price': 'avg_price'}, inplace=True)
-        
+        recent_price = products[['pdt_code', 'warehouse_calculated_avg_price']]
+        recent_price.rename(
+            columns={'warehouse_calculated_avg_price': 'avg_price'}, inplace=True)
+
         tmp_inv = tmp_inv.merge(recent_price, on='pdt_code')
         tmp_inv['value'] = tmp_inv['qty'] * tmp_inv['avg_price']
 
@@ -1040,9 +1052,10 @@ def process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before
     last_month_sales = sales[sales['doc_date'] >= last_month_str].copy()
     last_2_weeks_sales = sales[sales['doc_date']
                                >= two_weeks_before_str].copy()
-    
-    active_customers = customers.loc[customers['is_active'] == 'Y', :][['customer_code','name']]
-    active_customers.rename(columns={'name':'customer_name'},inplace=True)
+
+    active_customers = customers.loc[customers['is_active'] == 'Y', :][[
+        'customer_code', 'name']]
+    active_customers.rename(columns={'name': 'customer_name'}, inplace=True)
 
     last_2_months_active_customers = sales['customer_code'].unique()
     last_month_active_customers = last_month_sales['customer_code'].unique()
@@ -1055,7 +1068,8 @@ def process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before
         last_month_active_customers), 'activity'] = 'Bought Last Month'
     active_customers.loc[active_customers['customer_code'].isin(
         last_2_weeks_active_customers), 'activity'] = 'Bought Last 2 Weeks'
-    active_customers.loc[active_customers['activity'] == 'nan', 'activity'] = 'Inactive'
+    active_customers.loc[active_customers['activity']
+                         == 'nan', 'activity'] = 'Inactive'
 
     return active_customers
 
@@ -1079,8 +1093,9 @@ def process_ft_daily_purchase_value_ts(purchase_value_ts):
 def process_ft_pdt_potential_customers(customers, pdts, sales):
 
     all_pdt_codes = list(pdts.loc[:, 'pdt_code'])
-        
-    all_customer_codes = set(customers.loc[customers['is_active'] == 'Y', 'customer_code'])
+
+    all_customer_codes = set(
+        customers.loc[customers['is_active'] == 'Y', 'customer_code'])
     current_pdt_customers = sales[['pdt_code', 'customer_code']].drop_duplicates(
         subset=['pdt_code', 'customer_code'])
     customer_total_sales = sales.groupby(['customer_code'])[

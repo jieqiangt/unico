@@ -33,15 +33,20 @@ def create_ft_sales_ops_report():
 
     table = 'ft_sales_ops_report'
     mysql_engine = create_mysql_engine(**RDS_CREDS)
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    
+    with mssql_engine.connect() as mssql_conn:
+        products = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
 
     with mysql_engine.connect() as mysql_conn:
-        pdt_base = get_data_from_query(
+        pdt_stats = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_sales_ops_report.sql')
         inv_value = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_current_inventory_value.sql')
 
     sales_report = process_sales_ops_report(
-        pdt_base, inv_value)
+        products, pdt_stats, inv_value)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
@@ -111,7 +116,7 @@ def create_ft_pdt_summary():
         params = {"start_date": f"'{query_start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql', params)
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(

@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS ft_recent_sales (
     price NUMERIC(10, 2) NOT NULL,
     amount NUMERIC(10, 2) NOT NULL,
     purchase_price NUMERIC(10, 2),
+    pc1 NUMERIC(10,2),
     PRIMARY KEY (doc_date, doc_num, line_num)
 );

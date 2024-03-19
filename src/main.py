@@ -61,7 +61,7 @@ create_ft_customer_churn()
 create_ft_current_processing_movement()
 create_ft_pdt_potential_customers()
 
-# export_current_inventory_report()
+export_current_inventory_report()
 
 
 

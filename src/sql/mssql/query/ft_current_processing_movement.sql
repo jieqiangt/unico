@@ -3,7 +3,9 @@ SELECT
     DATEFROMPARTS(YEAR(IGE1.DocDate), MONTH(IGE1.DocDate), DAY(IGE1.DocDate)) AS 'doc_date',
     IGE1.ItemCode AS 'pdt_code',
     OITM.ItemName AS 'pdt_name',
+    OITM.InvntryUom AS 'uom',
     Quantity AS 'qty',
+    Price AS 'price',
     LineTotal AS 'amount',
     'to_processing' AS 'movement_type'
 FROM
@@ -17,7 +19,9 @@ SELECT
     DATEFROMPARTS(YEAR(IGN1.DocDate), MONTH(IGN1.DocDate), DAY(IGN1.DocDate)) AS 'doc_date',
     IGN1.ItemCode AS 'pdt_code',
     OITM.ItemName AS 'pdt_name',
+    OITM.InvntryUom AS 'uom',
     Quantity AS 'qty',
+    Price AS 'price',
     LineTotal AS 'amount',
     'from_processing' AS 'movement_type'
 FROM
