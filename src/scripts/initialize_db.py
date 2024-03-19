@@ -608,9 +608,8 @@ def init_ft_daily_qty_value_tracking_ts():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_purchases.sql', params)
-        price_params = {"as_of_date": f"'{end_date_str}'"}
-        recent_price = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_current_sap_avg_price.sql', price_params)
+        products = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
 
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
@@ -619,7 +618,7 @@ def init_ft_daily_qty_value_tracking_ts():
             mysql_conn, f'./sql/mysql/query/get_recent_inventory.sql', params)
 
     qty_value_ts = process_ft_daily_qty_value_tracking_ts(
-        sales, inv, purchases, recent_price, start_date_str, end_date_str)
+        sales, inv, purchases, products, start_date_str, end_date_str)
 
     with mysql_engine.connect() as mysql_conn:
 
