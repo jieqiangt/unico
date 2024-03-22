@@ -441,9 +441,9 @@ def process_sales_ops_report(products, pdt_stats, inv_value):
         report['avg_monthly_sales_qty']
     report['sales_activity_category'] = 'NORMAL'
     report.loc[report['monthly_sales_qty_to_current_inv_ratio']
-               > 4, 'sales_activity_category'] = 'SLOW SALES'
+               < 0.5, 'sales_activity_category'] = 'REORDER'
     report.loc[report['monthly_sales_qty_to_current_inv_ratio']
-               > 0.5, 'sales_activity_category'] = 'REORDER'
+               > 4, 'sales_activity_category'] = 'SLOW SALES'
     report.loc[report['monthly_sales_qty_to_current_inv_ratio'].isna(),
                'sales_activity_category'] = 'NO SALES'
     
