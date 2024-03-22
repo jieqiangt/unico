@@ -279,7 +279,7 @@ def init_ft_recent_sales():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date + relativedelta(months=-6)
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
@@ -347,7 +347,7 @@ def init_ft_recent_purchases():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date + relativedelta(months=-12)
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
