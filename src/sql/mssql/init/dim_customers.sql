@@ -9,7 +9,7 @@ SELECT
     OSLP.SlpName AS 'sales_employee',
     [Address] AS 'address',
     ZipCode AS 'zipcode',
-    OOND.IndDesc AS 'industry',
+    OOND.IndName AS 'industry',
     OCRG.GroupName AS 'trade_ind',
     OCTG.PymntGroup AS 'payment_terms',
     ValidFor AS 'is_active'
