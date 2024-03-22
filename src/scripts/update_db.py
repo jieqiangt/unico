@@ -209,6 +209,8 @@ def update_ft_recent_sales():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
+    mssql_engine.dispose()
+    
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
@@ -216,16 +218,16 @@ def update_ft_recent_sales():
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
     sales = process_ft_recent_sales(sales, purchase_prices)
-
+    
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "doc_date",
                   "start_date": f"'{start_date_str}'", "end_date": f"'{END_DATE_STR}'"}
         execute_in_mysql(
             mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
         mysql_conn.commit()
-
+    
     with mysql_engine.connect() as mysql_conn:
-        removal_end_date = END_DATE + relativedelta(months=-24)
+        removal_end_date = END_DATE + relativedelta(months=-13)
         removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
         removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
         removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
@@ -241,7 +243,6 @@ def update_ft_recent_sales():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
-    mssql_engine.dispose()
 
 
 def update_ft_recent_purchases():
@@ -261,6 +262,7 @@ def update_ft_recent_purchases():
         purchases = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_purchases.sql', params)
 
+    mssql_engine.dispose()
     purchases = process_ft_recent_purchases(purchases)
 
     with mysql_engine.connect() as mysql_conn:
@@ -271,7 +273,7 @@ def update_ft_recent_purchases():
         mysql_conn.commit()
 
     with mysql_engine.connect() as mysql_conn:
-        removal_end_date = END_DATE + relativedelta(months=-24)
+        removal_end_date = END_DATE + relativedelta(months=-13)
         removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
         removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
         removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
@@ -287,8 +289,7 @@ def update_ft_recent_purchases():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
-    mssql_engine.dispose()
-
+    
 
 def update_ft_pdt_monthly_summary_ts():
 
