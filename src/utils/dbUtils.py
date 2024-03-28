@@ -46,7 +46,6 @@ def execute_in_mysql(conn, file_path, params=None):
 
     # do a connection check to check if it is a mysql connection
     query = get_query_from_sql_file(file_path, params)
-    print(query)
     data = conn.execute(query)
 
     return data
