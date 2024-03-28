@@ -10,19 +10,22 @@ SELECT
         WHEN DATEDIFF(month, OITM.CreateDate, GETDATE()) < 4 THEN 'new'
         ELSE 'old'
     END AS 'new_pdt_indicator',
-	MAX(OITW.AvgPrice) AS 'avg_price',
-	MAX(OITM.LastPurDat) AS 'last_purchase_date',
-	MAX(OITM.LastPurPrc) AS 'last_purchase_price',
-	MAX(OITW.AvgPrice) * 1.25 AS 'breakeven_price'
+    MAX(OITW.AvgPrice) AS 'avg_price',
+    MAX(OITM.LastPurDat) AS 'last_purchase_date',
+    MAX(OITM.LastPurPrc) AS 'last_purchase_price',
+    MAX(OITW.AvgPrice) * 1.25 AS 'breakeven_price'
 FROM
     OITW
-    LEFT JOIN OITM ON OITW.ItemCOde = OITM.ItemCode
+    LEFT JOIN OITM ON OITW.ItemCode = OITM.ItemCode
     LEFT JOIN OITB ON OITM.ItmsGrpCod = OITB.ItmsGrpCod
+WHERE
+    OITW.ItemCode NOT LIKE 'ZS%'
 GROUP BY
     OITW.ItemCode,
     OITM.ItemName,
     OITM.FrgnName,
     OITM.InvntryUom,
     OITM.CreateDate,
-	OITB.ItmsGrpNam
-HAVING SUM(OITW.OnHand) - SUM(OITW.IsCommited) <> 0;
+    OITB.ItmsGrpNam
+HAVING
+    SUM(OITW.OnHand) - SUM(OITW.IsCommited) <> 0;
