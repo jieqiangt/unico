@@ -26,6 +26,8 @@ RDS_CREDS = {"host": os.getenv('RDS_HOST'),
              "db_user": os.getenv('RDS_DB_USER'),
              "db_pw": os.getenv('RDS_DB_PW')}
 
+END_DATE = date.today()
+END_DATE_STR = END_DATE.strftime("%Y-%m-%d")
 
 def init_dim_customers():
 
@@ -82,10 +84,15 @@ def init_dim_pdts():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-
+    
+    start_date = END_DATE.replace(day=1) + relativedelta(months=-3)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    
     with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{END_DATE_STR}'"}
         data = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/{table}.sql')
+            mssql_conn, f'./sql/mssql/init/{table}.sql',params)
 
     with mysql_engine.connect() as mysql_conn:
         drop_table(mysql_conn, table)
