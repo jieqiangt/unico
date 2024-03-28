@@ -3,10 +3,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from dateutil import relativedelta
-from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column
+from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column, conditional_formatting_redfill, conditional_formatting_greenfill, format_column_to_precentage
 
 from utils.pandaUtils import get_date_cols, convert_dt_cols, merge_all_df
-
 
 def process_ft_cashflow_monthly_ts(outgoing, incoming):
 
@@ -193,8 +192,7 @@ def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
         total_qty.rename(
             columns={"qty": f"summary_{data_prefix}_total_qty"}, inplace=True)
 
-        total_qty[f'summary_{data_prefix}_avg_qty_per_month'] = total_qty[f'summary_{
-            data_prefix}_total_qty'] / sampled_months
+        total_qty[f'summary_{data_prefix}_avg_qty_per_month'] = total_qty[f'summary_{data_prefix}_total_qty'] / sampled_months
 
     # getting latest date
     latest_date = df.copy()
@@ -432,7 +430,7 @@ def process_ft_purchases_alerts(purchases, pdt_summary):
 def process_sales_ops_report(products, pdt_stats, inv_value):
 
     products_req_cols = ['pdt_code', 'pdt_name', 'foreign_pdt_name', 'uom',
-                         'processed_pdt_ind', 'new_pdt_ind', 'pdt_main_category', 'base_price']
+                         'processed_pdt_ind', 'new_pdt_ind', 'pdt_main_category', 'base_price','ecommerce_pdt_ind']
     active_products = products[products['is_active'] == 'Y'][products_req_cols]
     report = active_products.merge(pdt_stats, on='pdt_code', how='left').merge(
         inv_value, on='pdt_code', how="left")
@@ -446,13 +444,16 @@ def process_sales_ops_report(products, pdt_stats, inv_value):
                >= 4, 'sales_activity_category'] = 'SLOW SALES'
     report.loc[report['monthly_sales_qty_to_current_inv_ratio'].isna(),
                'sales_activity_category'] = 'NO SALES'
-    
-    report.loc[report['processed_pdt_ind'] == 1, 'processed_pdt_ind'] = 'PROCESSED'
-    report.loc[report['processed_pdt_ind'] == 0, 'processed_pdt_ind'] = 'NORMAL'
+
+    report.loc[report['processed_pdt_ind'] ==
+               1, 'processed_pdt_ind'] = 'PROCESSED'
+    report.loc[report['processed_pdt_ind']
+               == 0, 'processed_pdt_ind'] = 'NORMAL'
 
     report['current_inv_qty'] = report['current_inv_qty'].fillna(0)
     report['current_inv_value'] = report['current_inv_value'].fillna(0)
-    report['monthly_sales_qty_to_current_inv_ratio'] = report['monthly_sales_qty_to_current_inv_ratio'].fillna(0)
+    report['monthly_sales_qty_to_current_inv_ratio'] = report['monthly_sales_qty_to_current_inv_ratio'].fillna(
+        0)
     report['avg_weekly_sales_qty'] = report['avg_monthly_sales_qty'] * 12 / 52
     report['avg_daily_sales_qty'] = report['avg_monthly_sales_qty'] * 12 / 365
 
@@ -1168,7 +1169,75 @@ def process_current_inventory_report(inv, file_name):
 
             worksheet = writer.sheets[pdt_cat]
             for column in worksheet.columns:
-
                 auto_adjust_column(worksheet, column)
                 format_column_to_currency(column)
                 add_borders_to_column(column)
+
+
+def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
+    
+    industries = pdt_industry_pc['industry'].unique()
+    
+    with pd.ExcelWriter(f'{file_name}.xlsx', engine='openpyxl') as writer:
+
+        for pdt_cat in inv['pdt_main_cat'].unique():
+
+            output_sheet = inv[inv['pdt_main_cat'] == pdt_cat]
+            num_rows = output_sheet.shape[0]
+            
+            inv_columns = list(inv.columns)
+            variable_columns = ['min_sales_price', 'per_latest_purchase_cost_min_pc1',
+                                'max_sales_price', 'per_latest_purchase_cost_max_pc1']
+            columns_to_append = variable_columns * len(industries)
+            final_columns = inv_columns + columns_to_append
+            
+            for industry in industries:
+     
+                tmp_pc1 = pdt_industry_pc[pdt_industry_pc['industry'] == industry].copy()
+                tmp_pc1.drop(columns=['industry'], inplace=True)
+                tmp_variable_cols = [f'{col}_{industry}' for col in variable_columns]
+                tmp_col_names = ['pdt_code'] + tmp_variable_cols
+                tmp_pc1.columns = tmp_col_names
+                
+                output_sheet = output_sheet.merge(tmp_pc1, on='pdt_code', how='left')
+                
+                for tmp_variable_col in tmp_col_names:
+                    output_sheet[tmp_variable_col] = output_sheet[tmp_variable_col].fillna(0)
+                
+            output_sheet.columns = final_columns
+            output_sheet = output_sheet.sort_values(
+                by='available_inv', ascending=False)
+            output_sheet.to_excel(writer, sheet_name=pdt_cat,
+                                  index=False, header=True, startrow=1)
+
+            worksheet = writer.sheets[pdt_cat]
+            num_of_static_cols = len(inv_columns)
+            num_of_variable_cols = len(variable_columns)
+            
+
+            for ids_num, industry in enumerate(industries):
+
+                starting_col = num_of_static_cols + 1 + ids_num * num_of_variable_cols
+                ending_col = starting_col + num_of_variable_cols - 1
+                
+                worksheet.cell(row=1, column=starting_col).value = industry
+                worksheet.merge_cells(
+                    start_row=1, start_column=starting_col, end_row=1, end_column=ending_col)
+
+            for column in worksheet.columns:
+
+                auto_adjust_column(worksheet, column, header_row=1)
+                if "price" in column[1].value:
+                    format_column_to_currency(column)
+                if "pc1" in column[1].value:
+                    column_letter = column[1].column_letter
+                    cell_range = f'{column_letter}3:{column_letter}{num_rows+3}'
+                    conditional_formatting_redfill(worksheet,cell_range,'lessThan',[0.1])
+                    conditional_formatting_greenfill(worksheet,cell_range,'greaterThanOrEqual',[0.1])
+                    format_column_to_precentage(column)
+                add_borders_to_column(column, num_headers=2)
+                
+
+                
+                
+                
