@@ -33,17 +33,14 @@ def create_ft_sales_ops_report():
 
     table = 'ft_sales_ops_report'
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    
-    with mssql_engine.connect() as mssql_conn:
-        products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
 
     with mysql_engine.connect() as mysql_conn:
         pdt_stats = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_sales_ops_report.sql')
         inv_value = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_current_inventory_value.sql')
+        products = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
 
     sales_report = process_sales_ops_report(
         products, pdt_stats, inv_value)
@@ -58,9 +55,9 @@ def create_ft_sales_ops_report():
         sales_report.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
-    
     record_data_refresh_log(table)
     mysql_engine.dispose()
+
 
 def create_ft_procurement_ops_report():
 
@@ -92,7 +89,7 @@ def create_ft_procurement_ops_report():
 def create_ft_pdt_summary():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     table = 'ft_pdt_summary'
 
@@ -100,23 +97,22 @@ def create_ft_pdt_summary():
     query_start_date = end_date.replace(day=1) + relativedelta(months=-13)
     purchase_sample_start_date = end_date.replace(
         day=1) + relativedelta(months=-12)
-    
-    sales_sample_start_date = end_date.replace(day=1) + relativedelta(months=-12)
+
+    sales_sample_start_date = end_date.replace(
+        day=1) + relativedelta(months=-12)
     sales_sample_start_date_str = sales_sample_start_date.strftime("%Y-%m-%d")
 
     query_start_date_str = query_start_date.strftime("%Y-%m-%d")
     purchase_sample_start_date_str = purchase_sample_start_date.strftime(
         "%Y-%m-%d")
     end_date_str = end_date.strftime("%Y-%m-%d")
-    
+
     activity_cutoff__date = end_date + relativedelta(days=-7)
     activity_cutoff_date_str = activity_cutoff__date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{query_start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(
@@ -124,21 +120,17 @@ def create_ft_pdt_summary():
         qty_processed = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_qty_to_processing.sql', params)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
+        products = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
         params = {"start_date": f"'{query_start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
-    mysql_olap_engine.dispose()
-
     ft_pdt_summary = process_ft_pdt_summary(
-        sales, qty_processed, purchases, products, purchase_prices, query_start_date_str, 
+        sales, qty_processed, purchases, products, purchase_prices, query_start_date_str,
         purchase_sample_start_date_str, sales_sample_start_date_str, end_date_str, activity_cutoff_date_str)
-
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
@@ -154,12 +146,13 @@ def create_ft_pdt_summary():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_sales_orders_alerts():
 
     table = 'ft_sales_orders_alerts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     start_date = END_DATE + relativedelta(days=-14)
     start_date_str = start_date.strftime("%Y-%m-%d")
@@ -169,25 +162,19 @@ def create_ft_sales_orders_alerts():
                   "end_date": f"'{END_DATE_STR}'"}
         current_sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        pdts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql',)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
         pdt_summary = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_ft_sales_orders_alerts.sql')
+        pdts = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
-    mysql_olap_engine.dispose()
-
     sales_report = process_ft_sales_orders_alerts(
         current_sales, pdt_summary, purchase_prices, pdts)
-
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}
@@ -223,6 +210,7 @@ def create_ft_sales_orders_alerts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+
 
 def create_ft_purchases_alerts():
 
@@ -280,6 +268,7 @@ def create_ft_purchases_alerts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_pdt_loss_summary():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
@@ -328,6 +317,7 @@ def create_ft_pdt_loss_summary():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+
 
 def create_int_pdt_purchase_price_ts():
 
@@ -385,6 +375,7 @@ def create_int_pdt_purchase_price_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_current_inv_value():
 
     table = 'ft_current_inv_value'
@@ -412,7 +403,8 @@ def create_ft_current_inv_value():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def create_ft_current_account_balances():
 
     table = 'ft_current_account_balances'
@@ -440,6 +432,7 @@ def create_ft_current_account_balances():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+
 
 def create_ft_accounts_aging_ts():
 
@@ -472,6 +465,7 @@ def create_ft_accounts_aging_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_outstanding_ar_breakdown():
 
     table = 'ft_outstanding_ar_breakdown'
@@ -503,6 +497,7 @@ def create_ft_outstanding_ar_breakdown():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_outstanding_ap_breakdown():
 
     table = 'ft_outstanding_ap_breakdown'
@@ -533,17 +528,16 @@ def create_ft_outstanding_ap_breakdown():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
-    
+
+
 def create_ft_customer_group_price_check_flagged_pdts():
 
     table = 'ft_customer_group_price_check_flagged_pdts'
     mysql_engine = create_mysql_engine(**RDS_CREDS)
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    
-    
+
     start_date = date.today().replace(day=1) + relativedelta(months=-3)
-    start_date_str = start_date.strftime("%Y-%m-%d")  
+    start_date_str = start_date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'"}
@@ -563,22 +557,24 @@ def create_ft_customer_group_price_check_flagged_pdts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def create_ft_customer_group_price_check_flagged_orders():
 
     table = 'ft_customer_group_price_check_flagged_orders'
     mysql_engine = create_mysql_engine(**RDS_CREDS)
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    
+
     start_date = date.today().replace(day=1) + relativedelta(months=-3)
-    start_date_str = start_date.strftime("%Y-%m-%d")  
+    start_date_str = start_date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'"}
         flagged_orders = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/ft_customer_group_price_check_flagged_orders.sql', params)
 
-    flagged_orders = process_ft_customer_group_price_check_flagged_orders(flagged_orders)
+    flagged_orders = process_ft_customer_group_price_check_flagged_orders(
+        flagged_orders)
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -597,36 +593,32 @@ def create_ft_customer_group_price_check_flagged_orders():
 def create_ft_customer_group_top_pdts():
 
     table = 'ft_customer_group_top_pdts'
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    
+
     # start_date = date.today().replace(day=1).replace(month=1)
     start_date = date.today().replace(day=1) + relativedelta(months=-12)
-    start_date_str = start_date.strftime("%Y-%m-%d")  
+    start_date_str = start_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    
+
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        pdts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql',)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-            # mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        pdts = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
 
-    mysql_olap_engine.dispose()
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
-    top_pdts = process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str)
-    
+    top_pdts = process_ft_customer_group_top_pdts(
+        sales, purchase_prices, pdts, start_date_str, end_date_str)
+
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -640,15 +632,15 @@ def create_ft_customer_group_top_pdts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
-    
+
+
 def create_dim_recent_processed_pdts():
 
     table = 'dim_recent_processed_pdts'
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     start_date = date.today().replace(day=1) + relativedelta(months=-12)
-    start_date_str = start_date.strftime("%Y-%m-%d")  
+    start_date_str = start_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
 
@@ -657,7 +649,7 @@ def create_dim_recent_processed_pdts():
                   "end_date": f"'{end_date_str}'"}
         recent_processed_pdts = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_processed_pdt.sql', params)
-    
+
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -670,13 +662,14 @@ def create_dim_recent_processed_pdts():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
-    
+
+
 def create_ft_customer_churn():
-    
+
     table = 'ft_customer_churn'
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     start_date = date.today() + relativedelta(months=-12)
     start_date_str = start_date.strftime("%Y-%m-%d")
     last_month = date.today() + relativedelta(months=-1)
@@ -689,13 +682,14 @@ def create_ft_customer_churn():
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        
+
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         customers = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/dim_customers.sql')
 
-    customer_churn = process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before_str)
+    customer_churn = process_ft_customer_churn(
+        customers, sales, last_month_str, two_weeks_before_str)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
@@ -711,12 +705,13 @@ def create_ft_customer_churn():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_ft_pdt_potential_customers():
-    
+
     table = 'ft_pdt_potential_customers'
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     start_date = date.today().replace(day=1) + relativedelta(months=-12)
     start_date_str = start_date.strftime("%Y-%m-%d")
     end_date = date.today()
@@ -724,16 +719,19 @@ def create_ft_pdt_potential_customers():
 
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}        
+                  "end_date": f"'{end_date_str}'"}
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         active_customers = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/dim_customers.sql')
-        pdts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
 
-    potential_customers = process_ft_pdt_potential_customers(active_customers, pdts, sales)
-    
+    with mysql_engine.connect() as mysql_conn:
+        pdts = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
+
+    potential_customers = process_ft_pdt_potential_customers(
+        active_customers, pdts, sales)
+
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -750,11 +748,11 @@ def create_ft_pdt_potential_customers():
 
 
 def create_ft_current_processing_movement():
-    
+
     table = 'ft_current_processing_movement'
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     start_date = date.today().replace(day=1) + relativedelta(months=-12)
     start_date_str = start_date.strftime("%Y-%m-%d")
     end_date = date.today()
@@ -762,12 +760,13 @@ def create_ft_current_processing_movement():
 
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}        
+                  "end_date": f"'{end_date_str}'"}
         processing_movement = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/ft_current_processing_movement.sql', params)
-        
-    processing_movement = process_ft_current_processing_movement(processing_movement)
-    
+
+    processing_movement = process_ft_current_processing_movement(
+        processing_movement)
+
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -781,8 +780,3 @@ def create_ft_current_processing_movement():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-
-    
-    
-
-    
