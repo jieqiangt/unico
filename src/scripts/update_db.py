@@ -440,6 +440,7 @@ def update_ft_daily_qty_value_tracking_ts():
                   "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+        products = get_data_from_query(mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
         
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
@@ -454,9 +455,6 @@ def update_ft_daily_qty_value_tracking_ts():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_purchases.sql', params)
-        price_params = {"as_of_date": f"'{end_date_str}'"}
-        products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql', price_params)
         mssql_conn.commit()
 
     with mysql_engine.connect() as mysql_conn:
