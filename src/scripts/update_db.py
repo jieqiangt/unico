@@ -148,7 +148,7 @@ def update_ft_sales_agent_performance_ts():
     table = 'ft_sales_agent_performance_ts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     start_date = END_DATE.replace(day=1) + relativedelta(months=-2)
     start_date_str = start_date.strftime("%Y-%m-%d")
@@ -161,9 +161,7 @@ def update_ft_sales_agent_performance_ts():
         credit_notes = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_credit_notes.sql', params)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         purchase_prices = get_data_from_query(
@@ -171,10 +169,6 @@ def update_ft_sales_agent_performance_ts():
 
     sales_agent_performance_ts = process_ft_sales_agent_performance_ts(
         sales, purchase_prices, credit_notes)
-
-    mysql_olap_engine.dispose()
-
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "agg_date",

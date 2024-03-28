@@ -231,7 +231,7 @@ def init_ft_sales_agent_performance_ts():
     table = 'ft_sales_agent_performance_ts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
@@ -247,21 +247,15 @@ def init_ft_sales_agent_performance_ts():
         credit_notes = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_credit_notes.sql', params)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
-    mysql_olap_engine.dispose()
-
     print('processing_sales_agent_performance...')
     sales_agent_performance_ts = process_ft_sales_agent_performance_ts(
         sales, purchase_prices, credit_notes)
-
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}
@@ -282,7 +276,7 @@ def init_ft_recent_sales():
     table = 'ft_recent_sales'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
@@ -295,19 +289,13 @@ def init_ft_recent_sales():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
-    with mysql_olap_engine.connect() as mysql_conn:
+    with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
-    mysql_olap_engine.dispose()
-
     sales = process_ft_recent_sales(sales, purchase_prices)
-
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}

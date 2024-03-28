@@ -272,7 +272,7 @@ def create_ft_purchases_alerts():
 def create_ft_pdt_loss_summary():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-    mysql_olap_engine = create_mysql_engine(**RDS_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     table = 'ft_pdt_loss_summary'
 
@@ -289,20 +289,15 @@ def create_ft_pdt_loss_summary():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
-    with mysql_olap_engine.connect() as mysql_conn:
-        # execute_in_mysql(
-        #     mysql_conn, f'./sql/mysql/config/set_olap.sql')
+    with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         purchase_prices = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
 
-    mysql_olap_engine.dispose()
-
     pdt_loss_summary = process_ft_pdt_loss_summary(
         sales, purchase_prices, start_date_str, END_DATE_STR)
 
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
