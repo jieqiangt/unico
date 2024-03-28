@@ -14,7 +14,9 @@ WITH products AS (
             ELSE 'old'
         END AS 'new_pdt_ind',
         OITM.LstEvlPric AS 'base_price',
-        OITB.ItmsGrpNam AS 'pdt_main_category'
+        OITB.ItmsGrpNam AS 'pdt_main_category',
+        OITM.LastPurDat AS 'last_purchase_date',
+        OITM.LastPurPrc AS 'last_purchase_price'
     FROM
         OITM
         LEFT JOIN OITB ON OITM.ItmsGrpCod = OITB.ItmsGrpCod
@@ -39,10 +41,30 @@ pdt_avg_price AS (
         OINM.ItemCode
     HAVING
         SUM(OINM.InQty - OINM.OutQty) <> 0
+),
+ecommerce_pdts AS (
+    SELECT
+	DISTINCT
+    RDR1.ItemCode AS 'pdt_code'
+FROM
+    RDR1
+	LEFT JOIN ORDR ON RDR1.DocEntry = ORDR.DocEntry
+	LEFT JOIN OCRD ON ORDR.CardCode = OCRD.CardCode
+	LEFT JOIN OOND ON OCRD.IndustryC = OOND.IndCode
+WHERE
+	RDR1.DocDate BETWEEN {{start_date}} AND {{end_date}}
+	AND ORDR.DocDate BETWEEN {{start_date}} AND {{end_date}}
+    AND ORDR.Canceled = 'N'
+    AND RDR1.ItemCode IS NOT NULL
+	AND RDR1.Price > 0.01
+	AND OOND.IndName = 'E-COMMERCE'
 )
 SELECT
     products.*,
-    pdt_avg_price.avg_price AS 'warehouse_calculated_avg_price'
+    pdt_avg_price.avg_price AS 'warehouse_calculated_avg_price',
+    CASE WHEN ecommerce_pdts.pdt_code IS NULL THEN 'N' ELSE 'Y' END AS 'ecommerce_pdt_ind'
 FROM
     products
     LEFT JOIN pdt_avg_price ON products.pdt_code = pdt_avg_price.pdt_code
+    LEFT JOIN ecommerce_pdts ON products.pdt_code = ecommerce_pdts.pdt_code;
+
