@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS ft_sales_ops_report (
     max_sales_price NUMERIC(10, 2),
     had_sales_last_7_days VARCHAR(8),
     sales_activity_category VARCHAR(25),
+    year_to_date_purchases_qty NUMERIC(10,2),
+    year_to_date_sales_qty NUMERIC(10,2),
     ecommerce_pdt_ind VARCHAR(1),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

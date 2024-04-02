@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS ft_pdt_summary (
     num_loss_orders INT,
     last_7_days_sales_is_active VARCHAR(8),
     new_pdt_ind VARCHAR(3),
+    year_to_date_sales_qty NUMERIC(10,2),
+    year_to_date_purchases_qty NUMERIC(10,2),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (pdt_code)

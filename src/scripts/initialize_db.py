@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts, process_ft_recent_credit_notes
 from utils.logging import record_data_refresh_log
 import pandas as pd
 load_dotenv()
@@ -245,7 +245,7 @@ def init_ft_sales_agent_performance_ts():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         credit_notes = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_credit_notes.sql', params)
+            mssql_conn, f'./sql/mssql/query/int_current_credit_notes.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
@@ -603,14 +603,15 @@ def init_ft_daily_qty_value_tracking_ts():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         purchases = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_purchases.sql', params)
-        products = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
+
 
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         inv = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_inventory.sql', params)
+        products = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
 
     qty_value_ts = process_ft_daily_qty_value_tracking_ts(
         sales, inv, purchases, products, start_date_str, end_date_str)
@@ -725,6 +726,61 @@ def init_ft_daily_pdt_processing_movement_ts():
     with mysql_engine.connect() as mysql_conn:
         processing_movement.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_recent_credit_notes():
+
+    table = 'ft_recent_credit_notes'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_current_credit_notes.sql', params)
+
+    credit_notes = process_ft_recent_credit_notes(credit_notes)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    date_range = list(pd.date_range(start_date_str, end_date_str, freq='W'))
+
+    if (date_range[-1].strftime("%Y-%m-%d") != end_date_str):
+        date_range.append(end_date)
+
+    for date_range_counter in range(len(date_range)-1):
+
+        append_start_date = date_range[date_range_counter].strftime("%Y-%m-%d")
+        append_end_date = date_range[date_range_counter +
+                                     1].strftime("%Y-%m-%d")
+
+        date_condition = ((credit_notes['doc_date'] >= append_start_date) & (
+            credit_notes['doc_date'] < append_end_date))
+
+        if (append_end_date == end_date_str):
+            date_condition = ((credit_notes['doc_date'] >= append_start_date) & (
+                credit_notes['doc_date'] <= append_end_date))
+
+        credit_notes_to_append = credit_notes[date_condition]
+
+        with mysql_engine.connect() as mysql_conn:
+            credit_notes_to_append.to_sql(table, con=mysql_conn, if_exists='append',
+                                   index=False, chunksize=1000)
 
     record_data_refresh_log(table)
     mysql_engine.dispose()

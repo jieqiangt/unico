@@ -27,10 +27,16 @@ def format_column_to_currency(column):
     for cell in column:
         cell.number_format = '$#,##0.00'
             
-def format_column_to_precentage(column):
+def format_column_to_percentage(column):
 
     for cell in column:
         cell.number_format = '0.0%'
+
+def format_column_to_date(column):
+
+    for cell in column:
+        cell.number_format = 'dd-mmm-yyyy'
+
 
 def add_borders_center_align_cell(cell):
 

@@ -20,6 +20,8 @@ SELECT
     summary_sales_min_price AS 'min_sales_price',
     summary_sales_max_price AS 'max_sales_price',
     summary_sales_avg_qty_per_month AS 'avg_monthly_sales_qty',
-    last_7_days_sales_is_active AS 'had_sales_last_7_days'
+    last_7_days_sales_is_active AS 'had_sales_last_7_days',
+    year_to_date_sales_qty,
+    year_to_date_purchases_qty
 FROM
     ft_pdt_summary;

@@ -1,6 +1,6 @@
 
 from utils.dbUtils import create_mssql_engine, create_mysql_engine, execute_in_mysql, get_data_from_query
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts, process_ft_recent_credit_notes
 from utils.logging import record_data_refresh_log
 import os
 from dotenv import load_dotenv
@@ -159,7 +159,7 @@ def update_ft_sales_agent_performance_ts():
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
         credit_notes = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_credit_notes.sql', params)
+            mssql_conn, f'./sql/mssql/query/int_current_credit_notes.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
@@ -233,6 +233,51 @@ def update_ft_recent_sales():
 
     with mysql_engine.connect() as mysql_conn:
         sales.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+
+def update_ft_recent_credit_notes():
+
+    table = 'ft_recent_credit_notes'
+    days_of_data = 14   
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    start_date = END_DATE + relativedelta(days=-days_of_data)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{END_DATE_STR}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_current_credit_notes.sql', params)
+
+    mssql_engine.dispose()
+    credit_notes = process_ft_recent_credit_notes(credit_notes)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{start_date_str}'", "end_date": f"'{END_DATE_STR}'"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        removal_end_date = END_DATE + relativedelta(months=-13)
+        removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
+        removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
+        removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{removal_start_date_str}'", "end_date": f"'{removal_end_date_str}'"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)

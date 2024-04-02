@@ -3,9 +3,10 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from dateutil import relativedelta
-from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column, conditional_formatting_redfill, conditional_formatting_greenfill, format_column_to_precentage
+from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column, conditional_formatting_redfill, conditional_formatting_greenfill, format_column_to_percentage, format_column_to_date
 
 from utils.pandaUtils import get_date_cols, convert_dt_cols, merge_all_df
+
 
 def process_ft_cashflow_monthly_ts(outgoing, incoming):
 
@@ -86,6 +87,10 @@ def process_ft_suppliers_monthly_pv_ts(purchases, suppliers):
 
 def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
 
+    today = datetime.today()
+    start_of_year_str = today.replace(
+        month=1).replace(day=1).strftime('%Y-%m-%d')
+    print(start_of_year_str)
     groupby_cols = ['pdt_code', 'pdt_name']
 
     max_date = df['doc_date'].max()
@@ -125,6 +130,12 @@ def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
 
     price_summary[f"summary_lower_{data_prefix}_price_std_limit"] = price_summary[f"summary_{data_prefix}_avg_price"] - \
         price_summary[f"summary_{data_prefix}_price_std"] * 6
+
+    year_to_date_qty = df[df['doc_date'] >= start_of_year_str]
+    year_to_date_qty = year_to_date_qty.groupby(['pdt_code', 'pdt_name'])[
+        'qty'].sum().reset_index()
+    year_to_date_qty.rename(columns={'qty': f'year_to_date_{
+                            data_prefix}_qty'}, inplace=True)
 
     # getting num unique bp
     bp_map = {'sales': 'customer', 'purchases': 'supplier'}
@@ -192,7 +203,8 @@ def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
         total_qty.rename(
             columns={"qty": f"summary_{data_prefix}_total_qty"}, inplace=True)
 
-        total_qty[f'summary_{data_prefix}_avg_qty_per_month'] = total_qty[f'summary_{data_prefix}_total_qty'] / sampled_months
+        total_qty[f'summary_{data_prefix}_avg_qty_per_month'] = total_qty[f'summary_{
+            data_prefix}_total_qty'] / sampled_months
 
     # getting latest date
     latest_date = df.copy()
@@ -210,11 +222,11 @@ def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
 
     if base is None:
         summary = merge_all_df(
-            dfs=[latest_date, latest_price, price_summary, total_qty, total_value, num_bp], merge_keys=['pdt_code', 'pdt_name'])
+            dfs=[latest_date, latest_price, price_summary, total_qty, total_value, num_bp, year_to_date_qty], merge_keys=['pdt_code', 'pdt_name'])
         return summary
 
     summary = merge_all_df(
-        dfs=[base, latest_price, latest_date, price_summary, total_qty, total_value, num_bp], merge_keys=['pdt_code', 'pdt_name'])
+        dfs=[base, latest_price, latest_date, price_summary, total_qty, total_value, num_bp, year_to_date_qty], merge_keys=['pdt_code', 'pdt_name'])
 
     return summary
 
@@ -430,7 +442,7 @@ def process_ft_purchases_alerts(purchases, pdt_summary):
 def process_sales_ops_report(products, pdt_stats, inv_value):
 
     products_req_cols = ['pdt_code', 'pdt_name', 'foreign_pdt_name', 'uom',
-                         'processed_pdt_ind', 'new_pdt_ind', 'pdt_main_category', 'base_price','ecommerce_pdt_ind']
+                         'processed_pdt_ind', 'new_pdt_ind', 'pdt_main_category', 'base_price', 'ecommerce_pdt_ind']
     active_products = products[products['is_active'] == 'Y'][products_req_cols]
     report = active_products.merge(pdt_stats, on='pdt_code', how='left').merge(
         inv_value, on='pdt_code', how="left")
@@ -593,6 +605,14 @@ def process_ft_recent_sales(sales, purchase_prices):
                                         sales_with_purchase_price['purchase_price'])/sales_with_purchase_price['price']
 
     return sales_with_purchase_price
+
+
+def process_ft_recent_credit_notes(credit_notes):
+
+    date_cols = get_date_cols(credit_notes)
+    credit_notes = convert_dt_cols(credit_notes, date_cols)
+
+    return credit_notes
 
 
 def process_ft_recent_purchases(purchases):
@@ -1022,19 +1042,15 @@ def process_ft_daily_qty_value_tracking_ts(sales, inv, purchases, products, star
             result_collate.append(daily_tmp_purchases_value)
             result_collate.append(daily_tmp_purchases_qty)
 
-        tmp_inv['pdt_code'] = pdt_code
+        pdt_price = products.loc[products['pdt_code'] ==
+                                 pdt_code, 'warehouse_calculated_avg_price'].item()
 
-        recent_price = products[['pdt_code', 'warehouse_calculated_avg_price']]
-        recent_price.rename(
-            columns={'warehouse_calculated_avg_price': 'avg_price'}, inplace=True)
-
-        tmp_inv = tmp_inv.merge(recent_price, on='pdt_code')
-        tmp_inv['value'] = tmp_inv['qty'] * tmp_inv['avg_price']
-
-        tmp_inv_value = tmp_inv.drop(columns=['qty', 'avg_price'])
+        tmp_inv_value = tmp_inv.copy()
+        tmp_inv_value['value'] = tmp_inv_value['qty'] * pdt_price
+        tmp_inv_value.drop(columns=['qty'], inplace=True)
         tmp_inv_value['value_type'] = 'inv_value'
 
-        tmp_inv_qty = tmp_inv.drop(columns=['avg_price', 'value'])
+        tmp_inv_qty = tmp_inv.copy()
         tmp_inv_qty['value_type'] = 'inv_qty'
         tmp_inv_qty.rename(columns={'qty': 'value'}, inplace=True)
 
@@ -1170,40 +1186,45 @@ def process_current_inventory_report(inv, file_name):
             worksheet = writer.sheets[pdt_cat]
             for column in worksheet.columns:
                 auto_adjust_column(worksheet, column)
-                format_column_to_currency(column)
                 add_borders_to_column(column)
+                if "date" in column[0].value:
+                    format_column_to_date(column)
 
 
 def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
-    
+
     industries = pdt_industry_pc['industry'].unique()
-    
+
     with pd.ExcelWriter(f'{file_name}.xlsx', engine='openpyxl') as writer:
 
         for pdt_cat in inv['pdt_main_cat'].unique():
 
             output_sheet = inv[inv['pdt_main_cat'] == pdt_cat]
             num_rows = output_sheet.shape[0]
-            
+
             inv_columns = list(inv.columns)
             variable_columns = ['min_sales_price', 'per_latest_purchase_cost_min_pc1',
                                 'max_sales_price', 'per_latest_purchase_cost_max_pc1']
             columns_to_append = variable_columns * len(industries)
             final_columns = inv_columns + columns_to_append
-            
+
             for industry in industries:
-     
-                tmp_pc1 = pdt_industry_pc[pdt_industry_pc['industry'] == industry].copy()
+
+                tmp_pc1 = pdt_industry_pc[pdt_industry_pc['industry'] == industry].copy(
+                )
                 tmp_pc1.drop(columns=['industry'], inplace=True)
-                tmp_variable_cols = [f'{col}_{industry}' for col in variable_columns]
+                tmp_variable_cols = [
+                    f'{col}_{industry}' for col in variable_columns]
                 tmp_col_names = ['pdt_code'] + tmp_variable_cols
                 tmp_pc1.columns = tmp_col_names
-                
-                output_sheet = output_sheet.merge(tmp_pc1, on='pdt_code', how='left')
-                
+
+                output_sheet = output_sheet.merge(
+                    tmp_pc1, on='pdt_code', how='left')
+
                 for tmp_variable_col in tmp_col_names:
-                    output_sheet[tmp_variable_col] = output_sheet[tmp_variable_col].fillna(0)
-                
+                    output_sheet[tmp_variable_col] = output_sheet[tmp_variable_col].fillna(
+                        0)
+
             output_sheet.columns = final_columns
             output_sheet = output_sheet.sort_values(
                 by='available_inv', ascending=False)
@@ -1213,13 +1234,12 @@ def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
             worksheet = writer.sheets[pdt_cat]
             num_of_static_cols = len(inv_columns)
             num_of_variable_cols = len(variable_columns)
-            
 
             for ids_num, industry in enumerate(industries):
 
                 starting_col = num_of_static_cols + 1 + ids_num * num_of_variable_cols
                 ending_col = starting_col + num_of_variable_cols - 1
-                
+
                 worksheet.cell(row=1, column=starting_col).value = industry
                 worksheet.merge_cells(
                     start_row=1, start_column=starting_col, end_row=1, end_column=ending_col)
@@ -1229,15 +1249,29 @@ def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
                 auto_adjust_column(worksheet, column, header_row=1)
                 if "price" in column[1].value:
                     format_column_to_currency(column)
+                if "date" in column[1].value:
+                    format_column_to_date(column)
                 if "pc1" in column[1].value:
                     column_letter = column[1].column_letter
-                    cell_range = f'{column_letter}3:{column_letter}{num_rows+3}'
-                    conditional_formatting_redfill(worksheet,cell_range,'lessThan',[0.1])
-                    conditional_formatting_greenfill(worksheet,cell_range,'greaterThanOrEqual',[0.1])
-                    format_column_to_precentage(column)
+                    cell_range = f'{column_letter}3:{
+                        column_letter}{num_rows+3}'
+                    conditional_formatting_redfill(
+                        worksheet, cell_range, 'lessThan', [0.1])
+                    conditional_formatting_greenfill(
+                        worksheet, cell_range, 'greaterThanOrEqual', [0.1])
+                    format_column_to_percentage(column)
                 add_borders_to_column(column, num_headers=2)
-                
 
-                
-                
-                
+
+def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
+
+    date_cols = get_date_cols(pdt_monthly_qty)
+    pdt_monthly_qty = convert_dt_cols(pdt_monthly_qty, date_cols)
+
+    pdt_monthly_qty = pdt_monthly_qty.set_index('agg_date')
+    pdt_monthly_qty = pdt_monthly_qty.groupby(
+        ['pdt_code', 'qty_type']).resample(rule='MS').sum()
+    pdt_monthly_qty.drop(columns=['pdt_code', 'qty_type'], inplace=True)
+    pdt_monthly_qty.reset_index(inplace=True)
+
+    return pdt_monthly_qty
