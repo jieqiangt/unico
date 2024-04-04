@@ -1,5 +1,5 @@
 from utils.dbUtils import create_mysql_engine,  execute_in_mysql, get_data_from_query, create_mssql_engine
-from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_group_top_pdts, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement
+from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_group_top_pdts, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement, process_ft_pdt_monthly_qty_ts
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -775,3 +775,28 @@ def create_ft_current_processing_movement():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+
+
+def create_ft_pdt_monthly_qty_ts():
+
+    table = 'ft_pdt_monthly_qtyf_ts'
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        pdt_monthly_qty = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_pdt_monthly_qty_ts.sql')
+
+    pdt_monthly_qty = process_ft_pdt_monthly_qty_ts(pdt_monthly_qty)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {'table': table}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        pdt_monthly_qty.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False, method='multi', chunksize=10000)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
