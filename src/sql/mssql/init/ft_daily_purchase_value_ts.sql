@@ -10,6 +10,6 @@ WHERE
     OPCH.DocDate BETWEEN {{start_date}} AND {{end_date}}
     AND OPCH.CANCELED = 'N'
 GROUP BY
-    OPCH.DocDate, OOND.IndDesc
+    OPCH.DocDate, COALESCE(OOND.IndDesc, 'LOCAL SUPPLIERS')
 ORDER BY
-    OPCH.DocDate, OOND.IndDesc
+    OPCH.DocDate, COALESCE(OOND.IndDesc, 'LOCAL SUPPLIERS')
