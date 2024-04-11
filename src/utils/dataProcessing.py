@@ -1275,3 +1275,82 @@ def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
     pdt_monthly_qty.reset_index(inplace=True)
 
     return pdt_monthly_qty
+
+def process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, pdt_level_metrics,start_date_str, end_date_str):
+    
+    daily_pdt_inv_value['as_of_date'] = pd.to_datetime(daily_pdt_inv_value['as_of_date'])
+    output_collate = []
+    
+    date_range = pd.date_range(start_date_str, end_date_str)
+    
+    for pdt_code in daily_pdt_inv_value['pdt_code'].unique():
+        
+        tmp_daily_inv_value = daily_pdt_inv_value.loc[daily_pdt_inv_value['pdt_code'] == pdt_code, :]
+        tmp_daily_inv_value.sort_values(by='as_of_date',inplace=True)
+        tmp_daily_inv_value.set_index('as_of_date', inplace=True)       
+        tmp_daily_inv_value = tmp_daily_inv_value.resample(
+                'D', origin='start_day').sum().reindex(date_range).fillna(0)
+        tmp_daily_inv_value['previous_inv_value'] = tmp_daily_inv_value['inv_value'].shift(periods=1)
+        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value'] - tmp_daily_inv_value['previous_inv_value']
+        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value_change'].fillna(0)
+        
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] > 0, 'daily_pdt_label'] = 'INCREASE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] == 0, 'daily_pdt_label'] = 'NO CHANGE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] < 0, 'daily_pdt_label'] = 'DECREASE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value'] < 0, 'daily_pdt_label'] = 'NEGATIVE'
+        tmp_daily_inv_value.drop(columns=['inv_value_change','previous_inv_value', 'pdt_code'], inplace=True)
+        tmp_daily_inv_value.reset_index(inplace=True,names='as_of_date')
+        tmp_daily_inv_value['pdt_code'] = pdt_code
+        
+        output_collate.append(tmp_daily_inv_value)
+        
+    daily_pdt_inv_value_ts = pd.concat(output_collate, ignore_index=True)
+    daily_pdt_inv_value_ts = daily_pdt_inv_value_ts.merge(pdt_level_metrics, on='pdt_code',how='left')
+
+    return daily_pdt_inv_value_ts
+    
+
+def process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value,start_date_str, end_date_str):
+
+    daily_agg_values = pd.concat([daily_agg_values,daily_inv_value],ignore_index=True)
+    
+    category_dict = daily_agg_values[['value_sub_category','value_category']].drop_duplicates().to_dict(orient='list')
+    category_mapping = dict(zip(category_dict['value_sub_category'],category_dict['value_category']))
+    
+    daily_agg_values['as_of_date'] = pd.to_datetime(daily_agg_values['as_of_date'])
+    output_collate = []
+    
+    date_range = pd.date_range(start_date_str, end_date_str)
+        
+    for value_sub_category in daily_agg_values['value_sub_category'].unique():
+        
+        value_category = category_mapping[value_sub_category]
+        
+        tmp_daily_agg_values = daily_agg_values.loc[daily_agg_values['value_sub_category'] == value_sub_category, :]
+        tmp_daily_agg_values.sort_values(by='as_of_date',inplace=True)
+        tmp_daily_agg_values.set_index('as_of_date', inplace=True)       
+        tmp_daily_agg_values = tmp_daily_agg_values.resample(
+                'D', origin='start_day').sum().reindex(date_range).fillna(0)
+        tmp_daily_agg_values['previous_value'] = tmp_daily_agg_values['value'].shift(periods=1)
+        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value'] - tmp_daily_agg_values['previous_value']
+        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value_change'].fillna(0)
+        
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] > 0, 'daily_value_label'] = 'INCREASE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] == 0, 'daily_value_label'] = 'NO CHANGE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] < 0, 'daily_value_label'] = 'DECREASE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value'] < 0, 'daily_value_label'] = 'NEGATIVE'
+        tmp_daily_agg_values.drop(columns=['value_change','previous_value', 'value_category', 'value_sub_category'], inplace=True)
+        tmp_daily_agg_values.reset_index(inplace=True,names='as_of_date')
+        tmp_daily_agg_values['value_sub_category'] = value_sub_category
+        tmp_daily_agg_values['value_category'] = value_category
+        
+        output_collate.append(tmp_daily_agg_values)
+        
+    daily_agg_values_ts = pd.concat(output_collate, ignore_index=True)
+
+    return daily_agg_values_ts
+        
+    
+        
+        
+        
