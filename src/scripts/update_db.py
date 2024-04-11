@@ -578,7 +578,7 @@ def update_ft_daily_purchase_value_ts():
     latest_date_str = latest_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-
+    
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{latest_date_str}'",
                   "end_date": f"'{end_date_str}'"}
@@ -602,7 +602,7 @@ def update_ft_daily_purchase_value_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def update_ft_warehouse_inventory_ts(start_date=None):
+def update_ft_warehouse_inventory_ts():
 
     table = 'ft_warehouse_inventory_ts'
 
