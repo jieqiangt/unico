@@ -562,46 +562,6 @@ def update_ft_daily_sales_employee_value_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def update_ft_daily_purchase_value_ts():
-
-    table = 'ft_daily_purchase_value_ts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    with mysql_engine.connect() as mysql_conn:
-        get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
-        latest_date = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
-    latest_date = latest_date.values[0][0]
-    latest_date_str = latest_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-    
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{latest_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_value_ts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/ft_daily_purchase_value_ts.sql', params)
-
-    purchase_value_ts = process_ft_daily_purchase_value_ts(purchase_value_ts)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"table": f"{table}", "date_col": "as_of_date",
-                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
-        mysql_conn.commit()
-
-    with mysql_engine.connect() as mysql_conn:
-        purchase_value_ts.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-    
 def update_ft_warehouse_inventory_ts():
 
     table = 'ft_warehouse_inventory_ts'
@@ -620,8 +580,6 @@ def update_ft_warehouse_inventory_ts():
     latest_date_str = latest_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    
-    print(f'from {latest_date_str} to {end_date_str}')
 
     data_collate = []
 
@@ -650,44 +608,5 @@ def update_ft_warehouse_inventory_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def update_ft_daily_pdt_processing_movement_ts():
-
-    table = 'ft_daily_pdt_processing_movement_ts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    with mysql_engine.connect() as mysql_conn:
-        get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
-        latest_date = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
-    latest_date = latest_date.values[0][0]
-    latest_date_str = latest_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{latest_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        processing_movement = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/ft_daily_pdt_processing_movement_ts.sql', params)
-
-    processing_movement = process_ft_daily_pdt_processing_movement_ts(processing_movement)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"table": f"{table}", "date_col": "as_of_date",
-                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
-        mysql_conn.commit()
-
-    with mysql_engine.connect() as mysql_conn:
-        processing_movement.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
     
     

@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts, process_ft_recent_credit_notes
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts, process_ft_recent_credit_notes, process_ft_daily_pdt_tracking_pdt_inv_value_ts, process_ft_daily_agg_values_ts
 from utils.logging import record_data_refresh_log
 import pandas as pd
 load_dotenv()
@@ -28,6 +28,7 @@ RDS_CREDS = {"host": os.getenv('RDS_HOST'),
 
 END_DATE = date.today()
 END_DATE_STR = END_DATE.strftime("%Y-%m-%d")
+
 
 def init_dim_customers():
 
@@ -104,6 +105,33 @@ def init_dim_pdts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+def init_dim_dates():
+    
+    today = date.today()
+    end_date = today + relativedelta(months=24)
+    start_date = today + relativedelta(months=-48)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    
+    dates = pd.DataFrame({"date_key": pd.date_range(start_date_str, end_date_str)})
+    dates["start_of_month"] = dates['date_key'].to_numpy().astype('datetime64[M]')
+    
+    table = 'dim_dates'
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+        
+    with mysql_engine.connect() as mysql_conn:
+        dates.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
 
 def init_ft_cashflow_monthly_ts():
 
@@ -664,73 +692,6 @@ def init_ft_daily_sales_employee_value_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def init_ft_daily_purchase_value_ts():
-
-    table = 'ft_daily_purchase_value_ts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    start_date = date.today().replace(day=1).replace(month=1) + relativedelta(months=-36)
-    start_date_str = start_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_value_ts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/ft_daily_purchase_value_ts.sql', params)
-
-    purchase_value_ts = process_ft_daily_purchase_value_ts(purchase_value_ts)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {'table': table}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
-        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
-
-    with mysql_engine.connect() as mysql_conn:
-        purchase_value_ts.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-    
-    
-def init_ft_daily_pdt_processing_movement_ts():
-
-    table = 'ft_daily_pdt_processing_movement_ts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    start_date = date.today().replace(day=1).replace(month=1) + relativedelta(months=-36)
-    start_date_str = start_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        processing_movement = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/ft_daily_pdt_processing_movement_ts.sql', params)
-
-    processing_movement = process_ft_daily_pdt_processing_movement_ts(processing_movement)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {'table': table}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
-        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
-
-    with mysql_engine.connect() as mysql_conn:
-        processing_movement.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-    
 def init_ft_recent_credit_notes():
 
     table = 'ft_recent_credit_notes'
@@ -786,4 +747,86 @@ def init_ft_recent_credit_notes():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
+def init_ft_daily_pdt_tracking_pdt_inv_value_ts():
 
+    table = 'ft_daily_pdt_tracking_inv_value_ts'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    
+    with mysql_engine.connect() as mysql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        daily_pdt_inv_value = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_daily_pdt_inv_value.sql', params)
+        pdt_level_metrics = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_daily_pdt_tracking_pdt_lvl_metrics.sql')
+
+    daily_pdt_inv_value_ts = process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, pdt_level_metrics, start_date_str, end_date_str)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+        
+    with mysql_engine.connect() as mysql_conn:
+        daily_pdt_inv_value_ts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+
+def init_ft_daily_agg_values_ts():
+    
+    table = 'ft_daily_agg_values_ts'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        daily_agg_values = get_data_from_query(mssql_conn, f'./sql/mssql/query/ft_daily_agg_values_ts.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        daily_inv_value = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_daily_inv_value_ts.sql', params)\
+
+    daily_agg_values_ts = process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value, start_date_str, end_date_str)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+        
+    with mysql_engine.connect() as mysql_conn:
+        daily_agg_values_ts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+
+    
+    
+    
