@@ -1,4 +1,5 @@
 /data*
+/src/data/logs/*
 /venv
 
 *.bat
@@ -7,7 +8,6 @@
 
 *.pyc
 *.csv
-*.txt
 *.xlsx
 *.pem
 *.ipynb
