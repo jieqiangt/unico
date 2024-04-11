@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS dim_dates (
+    date_key DATE,
+    start_of_month DATE NOT NULL,
+    created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (date_key)
+);
