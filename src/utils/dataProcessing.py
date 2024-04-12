@@ -518,66 +518,6 @@ def process_procurement_ops_report(pdt_base, inv):
 
     return report[cols_seq]
 
-
-def process_ft_sales_agent_performance_ts(sales, purchase_prices, credit_notes):
-
-    sales_req_cols = ['doc_date', 'sales_employee_code',
-                      'sales_employee', 'pdt_code', 'price', 'qty', 'amount']
-    sales_date_cols = get_date_cols(sales[sales_req_cols])
-    sales = convert_dt_cols(sales[sales_req_cols], sales_date_cols)
-
-    purchase_prices.drop(
-        columns=['previous_price'], inplace=True)
-    purchase_prices_date_cols = get_date_cols(purchase_prices)
-    purchase_prices = convert_dt_cols(
-        purchase_prices, purchase_prices_date_cols)
-    purchase_prices.rename(columns={'as_of_date': 'doc_date'}, inplace=True)
-
-    profit = sales.merge(purchase_prices, on=[
-                         'doc_date', 'pdt_code'], how='left')
-    profit["profit"] = (
-        profit["price"] - profit["weighted_price"]) * profit["qty"]
-
-    groupby_cols = [pd.Grouper(
-        freq='MS'), 'sales_employee_code', 'sales_employee']
-    profit_num_cols = ["amount", "profit"]
-
-    profit_ts_index = profit.set_index('doc_date')
-    grouper_profit = profit_ts_index.groupby(groupby_cols)
-    sales_agent_ts = grouper_profit[profit_num_cols].sum().reset_index()
-
-    sales_agent_ts.rename(
-        columns={'doc_date': 'agg_date', 'amount': 'sales_amount'}, inplace=True)
-    sales_agent_ts['gross_profit_percentage'] = sales_agent_ts['profit'] / \
-        sales_agent_ts['sales_amount']
-
-    credit_notes_date_cols = get_date_cols(credit_notes)
-    credit_notes = convert_dt_cols(
-        credit_notes, credit_notes_date_cols)
-
-    credit_notes_ts_index = credit_notes.set_index('doc_date')
-    grouper_credit_notes = credit_notes_ts_index.groupby(groupby_cols)
-    credit_notes_ts = grouper_credit_notes[['amount']].sum().reset_index()
-
-    credit_notes_ts.rename(
-        columns={'doc_date': 'agg_date', 'amount': 'credit_notes_amount'}, inplace=True)
-
-    sales_agent_performance_ts = sales_agent_ts.merge(credit_notes_ts, on=[
-                                                      'agg_date', 'sales_employee_code', 'sales_employee'], how='left')
-    sales_agent_performance_ts['sales_amount'] = sales_agent_performance_ts['sales_amount'].fillna(
-        0)
-    sales_agent_performance_ts['credit_notes_amount'] = sales_agent_performance_ts['credit_notes_amount'].fillna(
-        0)
-
-    sales_agent_performance_ts['sales_amount'] = sales_agent_performance_ts['sales_amount'] - \
-        sales_agent_performance_ts['credit_notes_amount']
-
-    sales_agent_performance_ts.drop(
-        columns=['credit_notes_amount'], inplace=True)
-
-    return sales_agent_performance_ts
-
-
 def process_ft_recent_sales(sales, purchase_prices):
 
     sales_date_cols = get_date_cols(sales)
@@ -866,69 +806,6 @@ def process_ft_customer_group_price_check_flagged_orders(flagged_orders):
     flagged_orders = convert_dt_cols(flagged_orders, date_cols)
 
     return flagged_orders
-
-
-def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str):
-
-    sales_date_cols = get_date_cols(sales)
-    sales = convert_dt_cols(sales, sales_date_cols)
-    purchase_prices_date_cols = get_date_cols(purchase_prices)
-    purchase_prices = convert_dt_cols(
-        purchase_prices, purchase_prices_date_cols)
-
-    purchase_prices.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
-    purchase_prices.drop(columns=['previous_price'], inplace=True)
-
-    pdts = pdts[['pdt_code', 'processed_pdt_ind']]
-
-    sales_req_cols = ['doc_date', 'sales_employee_code', 'sales_employee',
-                      'customer_group_name', 'pdt_code', 'pdt_name', 'qty', 'price']
-    sales = sales[sales_req_cols]
-    sales = sales[sales['price'] > 0.01]
-    sales = sales[~sales['pdt_code'].str.startswith('ZS')]
-    sales.rename(columns={'doc_date': 'as_of_date'}, inplace=True)
-
-    profit = sales.merge(purchase_prices, on=[
-                         'as_of_date', 'pdt_code'], how='left')
-
-    profit['profit_per_qty'] = profit['price'] - profit['purchase_price']
-    profit['profit'] = profit['profit_per_qty'] * profit['qty']
-    profit['pc1_margin'] = profit['profit_per_qty'] / profit['price']
-    profit['revenue'] = profit['price'] * profit['qty']
-
-    groupby_cols = ['sales_employee_code', 'sales_employee',
-                    'customer_group_name', 'pdt_code', 'pdt_name']
-
-    total_profit = profit.groupby(groupby_cols)['profit'].sum(
-    ).reset_index().rename(columns={"profit": "total_profit"})
-
-    total_revenue = profit.groupby(groupby_cols)['revenue'].sum(
-    ).reset_index().rename(columns={"revenue": "total_revenue"})
-
-    total_qty = profit.groupby(groupby_cols)['qty'].sum(
-    ).reset_index().rename(columns={"qty": "total_qty"})
-
-    avg_pc1_margin = profit.groupby(groupby_cols)['pc1_margin'].mean(
-    ).reset_index().rename(columns={"pc1_margin": "avg_pc1_margin"})
-
-    median_pc1_margin = profit.groupby(groupby_cols)['pc1_margin'].median(
-    ).reset_index().rename(columns={"pc1_margin": "median_pc1_margin"})
-
-    customer_group_top_pdts = total_profit.merge(total_revenue, how='left', on=groupby_cols).merge(total_qty, how='left', on=groupby_cols).merge(
-        avg_pc1_margin, how='left', on=groupby_cols).merge(median_pc1_margin, how='left', on=groupby_cols).merge(pdts, on=['pdt_code'], how='left')
-
-    customer_group_top_pdts['sample_start_date'] = start_date_str
-    customer_group_top_pdts['sample_end_date'] = end_date_str
-
-    numeric_cols = ['total_profit', 'total_revenue',
-                    'total_qty', 'avg_pc1_margin', 'median_pc1_margin']
-
-    for col in numeric_cols:
-        customer_group_top_pdts[col] = customer_group_top_pdts[col].fillna(0)
-
-    return customer_group_top_pdts
-
 
 def process_ft_processed_pdt_daily_output_ts(processed_pdt_output, end_date_str):
 
@@ -1350,7 +1227,75 @@ def process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value,start_date_
 
     return daily_agg_values_ts
         
+def process_ft_sales_agent_performance_ts(monthly_agg_sales, customers):
     
-        
-        
-        
+    date_cols = get_date_cols(monthly_agg_sales)
+    monthly_agg_sales = convert_dt_cols(monthly_agg_sales, date_cols)
+    
+    customer_groups = customers.loc[: , ['customer_group_name','payment_terms']].copy()
+    customer_groups.drop_duplicates(inplace=True)
+    customer_groups = customer_groups.groupby(['customer_group_name'])['payment_terms'].apply(lambda x: '/'.join(x)).reset_index()
+    monthly_agg_sales = monthly_agg_sales.merge(customer_groups, on='customer_group_name', how='left')
+    
+    return monthly_agg_sales
+    
+def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str):
+
+    sales_date_cols = get_date_cols(sales)
+    sales = convert_dt_cols(sales, sales_date_cols)
+    purchase_prices_date_cols = get_date_cols(purchase_prices)
+    purchase_prices = convert_dt_cols(
+        purchase_prices, purchase_prices_date_cols)
+
+    purchase_prices.rename(
+        columns={'weighted_price': 'purchase_price'}, inplace=True)
+    purchase_prices.drop(columns=['previous_price'], inplace=True)
+
+    pdts = pdts[['pdt_code', 'processed_pdt_ind']]
+
+    sales_req_cols = ['doc_date', 'sales_employee_code', 'sales_employee',
+                      'customer_group_name', 'pdt_code', 'pdt_name', 'qty', 'price']
+    sales = sales[sales_req_cols]
+    sales = sales[sales['price'] > 0.01]
+    sales = sales[~sales['pdt_code'].str.startswith('ZS')]
+    sales.rename(columns={'doc_date': 'as_of_date'}, inplace=True)
+
+    profit = sales.merge(purchase_prices, on=[
+                         'as_of_date', 'pdt_code'], how='left')
+
+    profit['profit_per_qty'] = profit['price'] - profit['purchase_price']
+    profit['profit'] = profit['profit_per_qty'] * profit['qty']
+    profit['pc1_margin'] = profit['profit_per_qty'] / profit['price']
+    profit['revenue'] = profit['price'] * profit['qty']
+
+    groupby_cols = ['sales_employee_code', 'sales_employee',
+                    'customer_group_name', 'pdt_code', 'pdt_name']
+
+    total_profit = profit.groupby(groupby_cols)['profit'].sum(
+    ).reset_index().rename(columns={"profit": "total_profit"})
+
+    total_revenue = profit.groupby(groupby_cols)['revenue'].sum(
+    ).reset_index().rename(columns={"revenue": "total_revenue"})
+
+    total_qty = profit.groupby(groupby_cols)['qty'].sum(
+    ).reset_index().rename(columns={"qty": "total_qty"})
+
+    avg_pc1_margin = profit.groupby(groupby_cols)['pc1_margin'].mean(
+    ).reset_index().rename(columns={"pc1_margin": "avg_pc1_margin"})
+
+    median_pc1_margin = profit.groupby(groupby_cols)['pc1_margin'].median(
+    ).reset_index().rename(columns={"pc1_margin": "median_pc1_margin"})
+
+    customer_group_top_pdts = total_profit.merge(total_revenue, how='left', on=groupby_cols).merge(total_qty, how='left', on=groupby_cols).merge(
+        avg_pc1_margin, how='left', on=groupby_cols).merge(median_pc1_margin, how='left', on=groupby_cols).merge(pdts, on=['pdt_code'], how='left')
+
+    customer_group_top_pdts['sample_start_date'] = start_date_str
+    customer_group_top_pdts['sample_end_date'] = end_date_str
+
+    numeric_cols = ['total_profit', 'total_revenue',
+                    'total_qty', 'avg_pc1_margin', 'median_pc1_margin']
+
+    for col in numeric_cols:
+        customer_group_top_pdts[col] = customer_group_top_pdts[col].fillna(0)
+
+    return customer_group_top_pdts

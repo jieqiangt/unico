@@ -1,5 +1,5 @@
 from utils.dbUtils import create_mysql_engine,  execute_in_mysql, get_data_from_query, create_mssql_engine
-from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_group_top_pdts, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement, process_ft_pdt_monthly_qty_ts
+from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement, process_ft_pdt_monthly_qty_ts, process_ft_customer_group_top_pdts
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -584,51 +584,6 @@ def create_ft_customer_group_price_check_flagged_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
-
-def create_ft_customer_group_top_pdts():
-
-    table = 'ft_customer_group_top_pdts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    # start_date = date.today().replace(day=1).replace(month=1)
-    start_date = date.today().replace(day=1) + relativedelta(months=-12)
-    start_date_str = start_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        sales = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
-        pdts = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
-
-    top_pdts = process_ft_customer_group_top_pdts(
-        sales, purchase_prices, pdts, start_date_str, end_date_str)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {'table': table}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
-        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
-
-    with mysql_engine.connect() as mysql_conn:
-        top_pdts.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-
-
 def create_dim_recent_processed_pdts():
 
     table = 'dim_recent_processed_pdts'
@@ -800,3 +755,47 @@ def create_ft_pdt_monthly_qty_ts():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
+    
+
+def create_ft_customer_group_top_pdts():
+
+    table = 'ft_customer_group_top_pdts'
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+
+    # start_date = date.today().replace(day=1).replace(month=1)
+    start_date = date.today().replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        purchase_prices = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        pdts = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
+
+    top_pdts = process_ft_customer_group_top_pdts(
+        sales, purchase_prices, pdts, start_date_str, end_date_str)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {'table': table}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        top_pdts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
