@@ -150,25 +150,18 @@ def update_ft_sales_agent_performance_ts():
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
-    start_date = END_DATE.replace(day=1) + relativedelta(months=-2)
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-2)
     start_date_str = start_date.strftime("%Y-%m-%d")
-
+    
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{END_DATE_STR}'"}
-        sales = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        credit_notes = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/int_current_credit_notes.sql', params)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{END_DATE_STR}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
-
-    sales_agent_performance_ts = process_ft_sales_agent_performance_ts(
-        sales, purchase_prices, credit_notes)
+                  "end_date": f"'{end_date_str}'"}
+        monthly_agg_sales = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_sales_agent_performance_ts.sql', params)
+        customers = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_customers.sql')
+        
+    monthly_agg_sales_ts = process_ft_sales_agent_performance_ts(monthly_agg_sales, customers)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "agg_date",
@@ -178,13 +171,12 @@ def update_ft_sales_agent_performance_ts():
         mysql_conn.commit()
 
     with mysql_engine.connect() as mysql_conn:
-        sales_agent_performance_ts.to_sql(
+        monthly_agg_sales_ts.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-
 
 def update_ft_recent_sales():
 
