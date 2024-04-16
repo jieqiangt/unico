@@ -1,6 +1,6 @@
 
 from utils.dbUtils import create_mssql_engine, create_mysql_engine, execute_in_mysql, get_data_from_query
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_purchase_value_ts, process_ft_daily_pdt_processing_movement_ts, process_ft_recent_credit_notes
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_recent_credit_notes
 from utils.logging import record_data_refresh_log
 import os
 from dotenv import load_dotenv
@@ -509,46 +509,6 @@ def update_ft_daily_qty_value_tracking_ts():
         qty_value_ts.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
         mysql_conn.commit()
-
-    record_data_refresh_log(table)
-    mysql_engine.dispose()
-    mssql_engine.dispose()
-
-def update_ft_daily_sales_employee_value_ts():
-
-    table = 'ft_daily_sales_employee_value_ts'
-    mysql_engine = create_mysql_engine(**RDS_CREDS)
-    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
-
-    with mysql_engine.connect() as mysql_conn:
-        get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
-        latest_date = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
-    latest_date = latest_date.values[0][0]
-    latest_date_str = latest_date.strftime("%Y-%m-%d")
-    end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")
-
-    with mssql_engine.connect() as mssql_conn:
-        params = {"start_date": f"'{latest_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        sales_value_ts = get_data_from_query(
-            mssql_conn, f'./sql/mssql/init/ft_daily_sales_employee_value_ts.sql', params)
-
-    sales_value_ts = process_ft_daily_sales_employee_value_ts(sales_value_ts)
-
-    with mysql_engine.connect() as mysql_conn:
-        params = {"table": f"{table}", "date_col": "as_of_date",
-                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
-        execute_in_mysql(
-            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
-        mysql_conn.commit()
-
-    with mysql_engine.connect() as mysql_conn:
-        sales_value_ts.to_sql(
-            table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)
     mysql_engine.dispose()

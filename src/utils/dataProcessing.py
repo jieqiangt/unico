@@ -968,22 +968,6 @@ def process_ft_customer_churn(customers, sales, last_month_str, two_weeks_before
     return active_customers
 
 
-def process_ft_daily_sales_employee_value_ts(sales_value_ts):
-
-    date_cols = get_date_cols(sales_value_ts)
-    sales_value_ts = convert_dt_cols(sales_value_ts, date_cols)
-
-    return sales_value_ts
-
-
-def process_ft_daily_purchase_value_ts(purchase_value_ts):
-
-    date_cols = get_date_cols(purchase_value_ts)
-    purchase_value_ts = convert_dt_cols(purchase_value_ts, date_cols)
-
-    return purchase_value_ts
-
-
 def process_ft_pdt_potential_customers(customers, pdts, sales):
 
     all_pdt_codes = list(pdts.loc[:, 'pdt_code'])
