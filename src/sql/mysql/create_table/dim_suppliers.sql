@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS dim_suppliers (
     overseas_local_ind VARCHAR(50),
     trade_ind VARCHAR(25),
     payment_terms VARCHAR(25),
-    is_active BOOLEAN,
+    first_purchase_date DATE,
+    latest_purchase_date DATE,
+    is_active VARCHAR(1) NOT NULL,
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (supplier_code)

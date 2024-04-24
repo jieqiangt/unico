@@ -9,7 +9,10 @@ CREATE TABLE IF NOT EXISTS dim_customers (
     industry VARCHAR(100),
     trade_ind VARCHAR(25) NOT NULL,
     payment_terms VARCHAR(25) NOT NULL,
-    is_active BOOLEAN NOT NULL,
+    is_active VARCHAR(1) NOT NULL,
+    first_sales_date DATE,
+    latest_sales_date DATE,
+    relationship_length VARCHAR(100),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (customer_code)
