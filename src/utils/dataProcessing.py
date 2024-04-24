@@ -1283,3 +1283,34 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_
         customer_group_top_pdts[col] = customer_group_top_pdts[col].fillna(0)
 
     return customer_group_top_pdts
+
+def process_ft_daily_customer_sales_ts(daily_agg_sales, customers):
+    
+    date_cols = get_date_cols(daily_agg_sales)
+    daily_agg_sales = convert_dt_cols(daily_agg_sales, date_cols)
+    customer_required_cols = ['customer_code','name','address','zipcode','is_active','sales_employee','industry','trade_ind','payment_terms','first_sales_date','latest_sales_date','relationship_length']
+    customers = customers[customer_required_cols].rename(columns = {'name': 'customer_name'})
+    daily_agg_sales_ts = daily_agg_sales.merge(customers, on='customer_code',how='left')
+    
+    return daily_agg_sales_ts
+
+def process_ft_daily_sales_employee_value_ts(sales_value_ts):
+
+    date_cols = get_date_cols(sales_value_ts)
+    sales_value_ts = convert_dt_cols(sales_value_ts, date_cols)
+
+    return sales_value_ts
+
+def process_ft_daily_customer_ar_credit_notes_ts(ar_credit_notes):
+
+    date_cols = get_date_cols(ar_credit_notes)
+    ar_credit_notes = convert_dt_cols(ar_credit_notes, date_cols)
+
+    return ar_credit_notes
+
+def process_ft_recent_incoming_payments(incoming_payments):
+
+    date_cols = get_date_cols(incoming_payments)
+    incoming_payments = convert_dt_cols(incoming_payments, date_cols)
+
+    return incoming_payments
