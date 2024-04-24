@@ -6,10 +6,16 @@ SELECT
     OINV.DocDate AS 'doc_date',
     OINV.CardCode AS 'customer_code',
     OCRD.CardName AS 'customer_name',
+    CASE
+        WHEN OCRD.U_AF_CUSTGROUP = '' THEN OCRD.CardName
+        ELSE COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName)
+    END AS 'customer_group_name',
     OCRG.GroupName AS 'customer_type',
     OINV.SlpCode AS 'sales_employee_code',
     OSLP.SlpName AS 'sales_employee_name',
-    OINV.DocTotal AS 'amount_with_tax'
+    OINV.DocTotal AS 'amount_with_tax',
+    OINV.PaidToDate AS 'paid_amount',
+    (OINV.DocTotal - OINV.PaidToDate) AS 'outstanding_amount'
 FROM
     OINV
     LEFT JOIN OCRD ON OINV.CardCode = OCRD.CardCode
