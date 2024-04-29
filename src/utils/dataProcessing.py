@@ -1314,3 +1314,28 @@ def process_ft_recent_incoming_payments(incoming_payments):
     incoming_payments = convert_dt_cols(incoming_payments, date_cols)
 
     return incoming_payments
+
+def process_ft_daily_supplier_purchases_ts(daily_agg_purchases, suppliers):
+    
+    date_cols = get_date_cols(daily_agg_purchases)
+    daily_agg_purchases = convert_dt_cols(daily_agg_purchases, date_cols)
+    supplier_required_cols = ['supplier_code','name','entity_type','address','zipcode','is_active','overseas_local_ind','trade_ind','payment_terms','first_purchase_date','latest_purchase_date','relationship_length']
+    suppliers = suppliers[supplier_required_cols].rename(columns = {'name': 'supplier_name'})
+    daily_agg_purchases_ts = daily_agg_purchases.merge(suppliers, on='supplier_code',how='left')
+    
+    return daily_agg_purchases_ts
+
+def process_ft_daily_supplier_ap_credit_notes_ts(ap_credit_notes):
+
+    date_cols = get_date_cols(ap_credit_notes)
+    ap_credit_notes = convert_dt_cols(ap_credit_notes, date_cols)
+
+    return ap_credit_notes
+
+def process_ft_recent_outgoing_payments(outgoing_payments):
+    
+    date_cols = get_date_cols(outgoing_payments)
+    outgoing_payments = convert_dt_cols(outgoing_payments, date_cols)
+
+    return outgoing_payments
+    
