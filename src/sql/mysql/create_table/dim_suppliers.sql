@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS dim_suppliers (
     payment_terms VARCHAR(25),
     first_purchase_date DATE,
     latest_purchase_date DATE,
+    relationship_length VARCHAR(100),
     is_active VARCHAR(1) NOT NULL,
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

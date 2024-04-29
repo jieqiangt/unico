@@ -42,4 +42,4 @@ SELECT
     relationship_length
 FROM
     dim_suppliers
-    LEFT JOIN first_last_purchase_date ON dim_suppliers.supplier_code = first_sales_date.supplier_code;
+    LEFT JOIN first_last_purchase_date ON dim_suppliers.supplier_code = first_last_purchase_date.supplier_code;
