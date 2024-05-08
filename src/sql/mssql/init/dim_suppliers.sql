@@ -3,7 +3,15 @@ WITH dim_suppliers AS (
         CardCode AS 'supplier_code',
         CardName AS 'name',
         CmpPrivate AS 'entity_type',
-        CONCAT(COALESCE(Address,''), ' ', COALESCE(Block,''), ' ', COALESCE(Building,''), ' ' , COALESCE(ZipCode,'')) AS 'address',
+        CONCAT(
+            COALESCE(Address, ''),
+            ' ',
+            COALESCE(Block, ''),
+            ' ',
+            COALESCE(Building, ''),
+            ' ',
+            COALESCE(ZipCode, '')
+        ) AS 'address',
         ZipCode AS 'zipcode',
         OOND.IndDesc AS 'overseas_local_ind',
         OCRG.GroupName AS 'trade_ind',
@@ -29,7 +37,11 @@ first_last_purchase_date AS (
             ' & ',
             DATEDIFF(day, MIN(DocDate), GETDATE()) % 365,
             ' Days'
-        ) AS 'relationship_length'
+        ) AS 'relationship_length',
+        CASE
+            WHEN DATEDIFF(day, MAX(DocDate), GETDATE()) <= 90 THEN 'NEW'
+            ELSE 'OLD'
+        END AS 'new_ind'
     FROM
         OPCH
     GROUP BY
@@ -39,7 +51,8 @@ SELECT
     dim_suppliers.*,
     first_purchase_date,
     latest_purchase_date,
-    relationship_length
+    relationship_length,
+    COALESCE(new_ind, 'NEW') AS 'new_ind'
 FROM
     dim_suppliers
     LEFT JOIN first_last_purchase_date ON dim_suppliers.supplier_code = first_last_purchase_date.supplier_code;
