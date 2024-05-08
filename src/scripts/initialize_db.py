@@ -81,7 +81,7 @@ def init_dim_pdts():
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
     
-    start_date = END_DATE.replace(day=1) + relativedelta(months=-3)
+    start_date = END_DATE.replace(day=1) + relativedelta(months=-6)
     start_date_str = start_date.strftime("%Y-%m-%d")
     
     with mssql_engine.connect() as mssql_conn:
@@ -1024,16 +1024,18 @@ def init_ft_daily_supplier_purchases_credit_notes_ts():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date.replace(day=1) + relativedelta(months=-2)
+    start_date = end_date.replace(day=1) + relativedelta(months=-36)
     start_date_str = start_date.strftime("%Y-%m-%d")
     
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        daily_agg_purchases_credit_notes = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_daily_supplier_purchases_credit_notes_ts.sql', params)
         suppliers = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_suppliers.sql')
-        pdts = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_pdts.sql')
-        
+        daily_agg_purchases_credit_notes = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_daily_supplier_purchases_credit_notes_ts.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        pdts = get_data_from_query(mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
+    
     daily_values_ts = process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, suppliers, pdts)
     
     with mysql_engine.connect() as mysql_conn:

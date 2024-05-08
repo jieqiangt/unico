@@ -1349,8 +1349,8 @@ def process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_cred
     pdts = pdts[pdts_required_cols]
     supplier_required_cols = ['supplier_code','name','entity_type','address','zipcode','is_active','new_ind','overseas_local_ind','trade_ind','payment_terms','first_purchase_date','latest_purchase_date','relationship_length']
     suppliers = suppliers[supplier_required_cols].rename(columns = {'name': 'supplier_name'})
-    
     daily_agg_values_ts = daily_agg_purchases_credit_notes.merge(suppliers, on='supplier_code',how='left').merge(pdts, on='pdt_code',how='left')
+
     
     return daily_agg_values_ts
     
