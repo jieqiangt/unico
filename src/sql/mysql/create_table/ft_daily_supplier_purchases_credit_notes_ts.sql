@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS ft_daily_supplier_purchases_credit_notes_ts (
     first_purchase_date DATE,
     latest_purchase_date DATE,
     is_active VARCHAR(1) NOT NULL,
+    new_ind VARCHAR(12),
     relationship_length VARCHAR(100),
     pdt_code VARCHAR(25),
     pdt_name VARCHAR(255),
