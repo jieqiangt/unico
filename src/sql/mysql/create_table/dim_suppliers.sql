@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS dim_suppliers (
     latest_purchase_date DATE,
     relationship_length VARCHAR(100),
     is_active VARCHAR(1) NOT NULL,
-    new_ind VARCHAR(3) NOT NULL,
+    new_ind VARCHAR(12) NOT NULL,
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (supplier_code)

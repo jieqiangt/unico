@@ -39,7 +39,7 @@ first_last_purchase_date AS (
             ' Days'
         ) AS 'relationship_length',
         CASE
-            WHEN DATEDIFF(day, MAX(DocDate), GETDATE()) <= 90 THEN 'NEW'
+            WHEN DATEDIFF(day, MIN(DocDate), GETDATE()) <= 180 THEN 'NEW'
             ELSE 'OLD'
         END AS 'new_ind'
     FROM
@@ -52,7 +52,7 @@ SELECT
     first_purchase_date,
     latest_purchase_date,
     relationship_length,
-    COALESCE(new_ind, 'NEW') AS 'new_ind'
+    COALESCE(new_ind, 'NO PURCHASES') AS 'new_ind'
 FROM
     dim_suppliers
     LEFT JOIN first_last_purchase_date ON dim_suppliers.supplier_code = first_last_purchase_date.supplier_code;
