@@ -35,7 +35,11 @@ first_latest_sales_date AS (
             ' & ',
             DATEDIFF(day, MIN(DocDate), GETDATE()) % 365,
             ' Days'
-        ) AS 'relationship_length'
+        ) AS 'relationship_length',
+        CASE
+            WHEN DATEDIFF(day, MIN(DocDate), GETDATE()) <= 180 THEN 'NEW'
+            ELSE 'OLD'
+        END AS 'new_ind'
     FROM
         ORDR
     GROUP BY
@@ -45,7 +49,8 @@ SELECT
     dim_customers.*,
     first_sales_date,
     latest_sales_date,
-    relationship_length
+    relationship_length,
+    new_ind
 FROM
     dim_customers
     LEFT JOIN first_latest_sales_date ON dim_customers.customer_code = first_latest_sales_date.customer_code;

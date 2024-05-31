@@ -672,7 +672,7 @@ def init_ft_daily_pdt_tracking_inv_value_ts():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date = end_date.replace(day=1) + relativedelta(months=-18)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
     
@@ -681,10 +681,8 @@ def init_ft_daily_pdt_tracking_inv_value_ts():
                   "end_date": f"'{end_date_str}'"}
         daily_pdt_inv_value = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_daily_pdt_inv_value.sql', params)
-        pdt_level_metrics = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_daily_pdt_tracking_pdt_lvl_metrics.sql')
 
-    daily_pdt_inv_value_ts = process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, pdt_level_metrics, start_date_str, end_date_str)
+    daily_pdt_inv_value_ts = process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, start_date_str, end_date_str)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}

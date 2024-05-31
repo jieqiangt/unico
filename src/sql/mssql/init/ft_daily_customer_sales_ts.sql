@@ -44,5 +44,5 @@ GROUP BY
     END,
     ORDR.CardCode,
     RDR1.ItemCode,
-    OITM.ItemName
+    OITM.ItemName;
 ;

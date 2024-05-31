@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS dim_customers (
     first_sales_date DATE,
     latest_sales_date DATE,
     relationship_length VARCHAR(100),
+    new_ind VARCHAR(3),
     created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (customer_code)

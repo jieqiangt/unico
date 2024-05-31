@@ -298,7 +298,6 @@ def create_ft_pdt_loss_summary():
     pdt_loss_summary = process_ft_pdt_loss_summary(
         sales, purchase_prices, start_date_str, END_DATE_STR)
 
-
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
         execute_in_mysql(
@@ -584,6 +583,7 @@ def create_ft_customer_group_price_check_flagged_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def create_dim_recent_processed_pdts():
 
     table = 'dim_recent_processed_pdts'
@@ -755,7 +755,7 @@ def create_ft_pdt_monthly_qty_ts():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
-    
+
 
 def create_ft_customer_group_top_pdts():
 
@@ -799,3 +799,53 @@ def create_ft_customer_group_top_pdts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+
+
+def create_ft_daily_pdt_tracking_pdt_lvl_metrics():
+
+    table = 'ft_daily_pdt_tracking_pdt_lvl_metrics'
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        pdt_level_metrics = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_daily_pdt_tracking_pdt_lvl_metrics.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {'table': table}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        pdt_level_metrics.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+
+def create_ft_current_warehouse_inv_breakdown():
+
+    table = 'ft_current_warehouse_inv_breakdown'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    as_of_date = date.today()
+    as_of_date_str = as_of_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"as_of_date": f"'{as_of_date_str}'"}
+        warehouse_inv = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/{table}.sql',params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {'table': table}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        warehouse_inv.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
