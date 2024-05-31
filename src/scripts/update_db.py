@@ -710,13 +710,12 @@ def update_ft_daily_supplier_purchases_credit_notes_ts():
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{latest_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        suppliers = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_suppliers.sql')
         daily_agg_purchases_credit_notes = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_daily_supplier_purchases_credit_notes_ts.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         pdts = get_data_from_query(mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
     
-    daily_values_ts = process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, suppliers, pdts)
+    daily_values_ts = process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, pdts)
     
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "as_of_date",
