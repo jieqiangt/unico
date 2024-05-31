@@ -1137,7 +1137,7 @@ def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
 
     return pdt_monthly_qty
 
-def process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, pdt_level_metrics,start_date_str, end_date_str):
+def process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, start_date_str, end_date_str):
     
     daily_pdt_inv_value['as_of_date'] = pd.to_datetime(daily_pdt_inv_value['as_of_date'])
     output_collate = []
@@ -1166,7 +1166,6 @@ def process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, pdt_leve
         output_collate.append(tmp_daily_inv_value)
         
     daily_pdt_inv_value_ts = pd.concat(output_collate, ignore_index=True)
-    daily_pdt_inv_value_ts = daily_pdt_inv_value_ts.merge(pdt_level_metrics, on='pdt_code',how='left')
 
     return daily_pdt_inv_value_ts
     

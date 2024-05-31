@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS ft_daily_pdt_tracking_pdt_lvl_metrics (
+    pdt_code VARCHAR(25) NOT NULL,
+    pdt_name VARCHAR(255) NOT NULL,
+    uom VARCHAR(50),
+    slow_sales_ind VARCHAR(25),
+    new_pdt_ind VARCHAR(3),
+    last_7_days_sales_ind VARCHAR(8), 
+    on_hand_qty NUMERIC(10, 2) NOT NULL,
+    on_hand_value NUMERIC(10, 2) NOT NULL,
+    is_commited_qty NUMERIC(10, 2) NOT NULL,
+    is_commited_value NUMERIC(10, 2) NOT NULL,
+    on_order_qty NUMERIC(10, 2) NOT NULL,
+    on_order_value NUMERIC(10, 2) NOT NULL,
+    consig_qty NUMERIC(10, 2) NOT NULL,
+    consig_value NUMERIC(10, 2) NOT NULL,
+    monthly_sales_qty NUMERIC(10,2),
+    monthly_sales_qty_to_current_inv_ratio NUMERIC(10,2),
+    created_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_on DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (pdt_code)
+);
