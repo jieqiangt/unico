@@ -1339,14 +1339,17 @@ def process_ft_recent_outgoing_payments(outgoing_payments):
     return outgoing_payments
 
 
-def process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes,pdts):
+def process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, suppliers, pdts):
     
     date_cols = get_date_cols(daily_agg_purchases_credit_notes)
     daily_agg_purchases_credit_notes = convert_dt_cols(daily_agg_purchases_credit_notes, date_cols)
     
     pdts_required_cols = ['pdt_code','pdt_name','pdt_main_category']
     pdts = pdts[pdts_required_cols]
-    daily_agg_values_ts = daily_agg_purchases_credit_notes.merge(pdts, on='pdt_code',how='left')
+    supplier_required_cols = ['supplier_code','name','entity_type','address','zipcode','is_active','new_ind','overseas_local_ind','trade_ind','payment_terms','first_purchase_date','latest_purchase_date','relationship_length']
+    suppliers = suppliers[supplier_required_cols].rename(columns = {'name': 'supplier_name'})
+    daily_agg_values_ts = daily_agg_purchases_credit_notes.merge(suppliers, on='supplier_code',how='left').merge(pdts, on='pdt_code',how='left')
+
     
     return daily_agg_values_ts
     
