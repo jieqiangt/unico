@@ -123,13 +123,11 @@ def create_ft_pdt_summary():
     with mysql_engine.connect() as mysql_conn:
         products = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
-        params = {"start_date": f"'{query_start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        purchase_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql')
 
     ft_pdt_summary = process_ft_pdt_summary(
-        sales, qty_processed, purchases, products, purchase_prices, query_start_date_str,
+        sales, qty_processed, purchases, products, purchase_price, query_start_date_str,
         purchase_sample_start_date_str, sales_sample_start_date_str, end_date_str, activity_cutoff_date_str)
 
     with mysql_engine.connect() as mysql_conn:
@@ -170,11 +168,11 @@ def create_ft_sales_orders_alerts():
             mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        purchase_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql', params)
 
     sales_report = process_ft_sales_orders_alerts(
-        current_sales, pdt_summary, purchase_prices, pdts)
+        current_sales, pdt_summary, purchase_price, pdts)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}
@@ -292,11 +290,11 @@ def create_ft_pdt_loss_summary():
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        purchase_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql', params)
 
     pdt_loss_summary = process_ft_pdt_loss_summary(
-        sales, purchase_prices, start_date_str, END_DATE_STR)
+        sales, purchase_price, start_date_str, END_DATE_STR)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
@@ -776,15 +774,13 @@ def create_ft_customer_group_top_pdts():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        purchase_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql')
         pdts = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql',)
 
     top_pdts = process_ft_customer_group_top_pdts(
-        sales, purchase_prices, pdts, start_date_str, end_date_str)
+        sales, purchase_price, pdts, start_date_str, end_date_str)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}
@@ -823,19 +819,20 @@ def create_ft_daily_pdt_tracking_pdt_lvl_metrics():
     record_data_refresh_log(table)
     mysql_engine.dispose()
 
+
 def create_ft_current_warehouse_inv_breakdown():
 
     table = 'ft_current_warehouse_inv_breakdown'
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     as_of_date = date.today()
     as_of_date_str = as_of_date.strftime("%Y-%m-%d")
 
     with mssql_engine.connect() as mssql_conn:
         params = {"as_of_date": f"'{as_of_date_str}'"}
         warehouse_inv = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/{table}.sql',params)
+            mssql_conn, f'./sql/mssql/query/{table}.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         params = {'table': table}

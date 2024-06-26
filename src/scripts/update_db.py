@@ -1,6 +1,6 @@
 
 from utils.dbUtils import create_mssql_engine, create_mysql_engine, execute_in_mysql, get_data_from_query
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_recent_credit_notes, process_ft_daily_sales_employee_value_ts, process_ft_daily_pdt_tracking_pdt_inv_value_ts, process_ft_daily_agg_values_ts, process_ft_daily_supplier_purchases_credit_notes_ts, process_ft_daily_supplier_ap_credit_notes_ts
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_sales_agent_performance_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_recent_ap_invoices, process_ft_daily_qty_value_tracking_ts, process_ft_recent_credit_notes, process_ft_daily_sales_employee_value_ts, process_ft_daily_pdt_tracking_pdt_inv_value_ts, process_ft_daily_agg_values_ts, process_ft_daily_supplier_purchases_credit_notes_ts, process_ft_daily_supplier_ap_credit_notes_ts, process_ft_daily_customer_sales_ts, process_ft_daily_customer_ar_credit_notes_ts, process_ft_recent_incoming_payments
 from utils.logging import record_data_refresh_log
 import os
 from dotenv import load_dotenv
@@ -154,14 +154,17 @@ def update_ft_sales_agent_performance_ts():
     end_date_str = end_date.strftime("%Y-%m-%d")
     start_date = end_date.replace(day=1) + relativedelta(months=-2)
     start_date_str = start_date.strftime("%Y-%m-%d")
-    
+
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        monthly_agg_sales = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_sales_agent_performance_ts.sql', params)
-        customers = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_customers.sql')
-        
-    monthly_agg_sales_ts = process_ft_sales_agent_performance_ts(monthly_agg_sales, customers)
+        monthly_agg_sales = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/ft_sales_agent_performance_ts.sql', params)
+        customers = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_customers.sql')
+
+    monthly_agg_sales_ts = process_ft_sales_agent_performance_ts(
+        monthly_agg_sales, customers)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "agg_date",
@@ -178,14 +181,15 @@ def update_ft_sales_agent_performance_ts():
     mysql_engine.dispose()
     mssql_engine.dispose()
 
+
 def update_ft_recent_sales():
 
     table = 'ft_recent_sales'
-    days_of_data = 14 
-    
+    days_of_data = 14
+
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
-    
+
     start_date = END_DATE + relativedelta(days=-days_of_data)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
@@ -196,26 +200,25 @@ def update_ft_recent_sales():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
     mssql_engine.dispose()
-    
+
     with mysql_engine.connect() as mysql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{END_DATE_STR}'"}
         purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql')
 
     sales = process_ft_recent_sales(sales, purchase_prices)
-    
+
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "doc_date",
                   "start_date": f"'{start_date_str}'", "end_date": f"'{END_DATE_STR}'"}
         execute_in_mysql(
             mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
         mysql_conn.commit()
-    
+
     with mysql_engine.connect() as mysql_conn:
         removal_end_date = END_DATE + relativedelta(months=-13)
         removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
-        removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
+        removal_start_date = removal_end_date + \
+            relativedelta(days=-days_of_data)
         removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
         params = {"table": f"{table}", "date_col": "doc_date",
                   "start_date": f"'{removal_start_date_str}'", "end_date": f"'{removal_end_date_str}'"}
@@ -230,10 +233,11 @@ def update_ft_recent_sales():
     record_data_refresh_log(table)
     mysql_engine.dispose()
 
+
 def update_ft_recent_credit_notes():
 
     table = 'ft_recent_credit_notes'
-    days_of_data = 14   
+    days_of_data = 14
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -260,7 +264,8 @@ def update_ft_recent_credit_notes():
     with mysql_engine.connect() as mysql_conn:
         removal_end_date = END_DATE + relativedelta(months=-13)
         removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
-        removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
+        removal_start_date = removal_end_date + \
+            relativedelta(days=-days_of_data)
         removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
         params = {"table": f"{table}", "date_col": "doc_date",
                   "start_date": f"'{removal_start_date_str}'", "end_date": f"'{removal_end_date_str}'"}
@@ -279,7 +284,7 @@ def update_ft_recent_credit_notes():
 def update_ft_recent_purchases():
 
     table = 'ft_recent_purchases'
-    days_of_data = 14   
+    days_of_data = 14
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -306,7 +311,8 @@ def update_ft_recent_purchases():
     with mysql_engine.connect() as mysql_conn:
         removal_end_date = END_DATE + relativedelta(months=-13)
         removal_end_date_str = removal_end_date.strftime("%Y-%m-%d")
-        removal_start_date = removal_end_date + relativedelta(days=-days_of_data)
+        removal_start_date = removal_end_date + \
+            relativedelta(days=-days_of_data)
         removal_start_date_str = removal_start_date.strftime("%Y-%m-%d")
         params = {"table": f"{table}", "date_col": "doc_date",
                   "start_date": f"'{removal_start_date_str}'", "end_date": f"'{removal_end_date_str}'"}
@@ -320,7 +326,7 @@ def update_ft_recent_purchases():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
-    
+
 
 def update_ft_pdt_monthly_summary_ts():
 
@@ -339,17 +345,17 @@ def update_ft_pdt_monthly_summary_ts():
             mssql_conn, f'./sql/mssql/query/int_current_purchases.sql', params)
         sales = get_data_from_query(
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
-        
+
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{END_DATE_STR}'"}
         inv = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_inventory.sql', params)
-        recent_price = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        current_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql', params)
 
     pdt_monthly_summary_ts = process_ft_pdt_monthly_summary_ts(
-        sales, purchases, inv, recent_price)
+        sales, purchases, inv, current_price)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "agg_date",
@@ -459,7 +465,8 @@ def update_ft_recent_ap_invoices():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def update_ft_daily_qty_value_tracking_ts():
 
     table = 'ft_daily_qty_value_tracking_ts'
@@ -468,14 +475,15 @@ def update_ft_daily_qty_value_tracking_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        products = get_data_from_query(mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
-        
+        products = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
+
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
-    
+
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
 
@@ -513,7 +521,8 @@ def update_ft_daily_qty_value_tracking_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def update_ft_warehouse_inventory_ts():
 
     table = 'ft_warehouse_inventory_ts'
@@ -523,10 +532,10 @@ def update_ft_warehouse_inventory_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-    
+
     latest_date = latest_date.values[0][0]
     latest_date = latest_date + relativedelta(days=-7)
     latest_date_str = latest_date.strftime("%Y-%m-%d")
@@ -559,7 +568,8 @@ def update_ft_warehouse_inventory_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def update_ft_daily_sales_employee_value_ts():
 
     table = 'ft_daily_sales_employee_value_ts'
@@ -568,10 +578,10 @@ def update_ft_daily_sales_employee_value_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
+
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
     end_date = date.today()
@@ -599,7 +609,8 @@ def update_ft_daily_sales_employee_value_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
+
 def update_ft_daily_pdt_tracking_inv_value_ts():
 
     table = 'ft_daily_pdt_tracking_inv_value_ts'
@@ -608,22 +619,23 @@ def update_ft_daily_pdt_tracking_inv_value_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
+
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    
+
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{latest_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         daily_pdt_inv_value = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_daily_pdt_inv_value.sql', params)
 
-    daily_pdt_inv_value_ts = process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, latest_date_str, end_date_str)
+    daily_pdt_inv_value_ts = process_ft_daily_pdt_tracking_pdt_inv_value_ts(
+        daily_pdt_inv_value, latest_date_str, end_date_str)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "as_of_date",
@@ -639,10 +651,10 @@ def update_ft_daily_pdt_tracking_inv_value_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
 
 def update_ft_daily_agg_values_ts():
-    
+
     table = 'ft_daily_agg_values_ts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
@@ -650,19 +662,20 @@ def update_ft_daily_agg_values_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-        
+
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    
+
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{latest_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        daily_agg_values = get_data_from_query(mssql_conn, f'./sql/mssql/query/ft_daily_agg_values_ts.sql', params)
+        daily_agg_values = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_values_ts.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"start_date": f"'{latest_date_str}'",
@@ -670,7 +683,8 @@ def update_ft_daily_agg_values_ts():
         daily_inv_value = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_daily_inv_value_ts.sql', params)\
 
-    daily_agg_values_ts = process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value, latest_date_str, end_date_str)
+    daily_agg_values_ts = process_ft_daily_agg_values_ts(
+        daily_agg_values, daily_inv_value, latest_date_str, end_date_str)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "as_of_date",
@@ -686,11 +700,10 @@ def update_ft_daily_agg_values_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
-    
+
+
 def update_ft_daily_supplier_purchases_credit_notes_ts():
-    
-        
+
     table = 'ft_daily_supplier_purchases_credit_notes_ts'
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
@@ -698,26 +711,30 @@ def update_ft_daily_supplier_purchases_credit_notes_ts():
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-    
+
     end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")    
+    end_date_str = end_date.strftime("%Y-%m-%d")
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
-    
+
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{latest_date_str}'",
                   "end_date": f"'{end_date_str}'"}
-        suppliers = get_data_from_query(mssql_conn, f'./sql/mssql/init/dim_suppliers.sql')
-        daily_agg_purchases_credit_notes = get_data_from_query(mssql_conn, f'./sql/mssql/init/ft_daily_supplier_purchases_credit_notes_ts.sql', params)
+        suppliers = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_suppliers.sql')
+        daily_agg_purchases_credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/ft_daily_supplier_purchases_credit_notes_ts.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
-        pdts = get_data_from_query(mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
-    
-    daily_values_ts = process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, suppliers, pdts)
-    
+        pdts = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_dim_pdts.sql')
+
+    daily_values_ts = process_ft_daily_supplier_purchases_credit_notes_ts(
+        daily_agg_purchases_credit_notes, suppliers, pdts)
+
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "as_of_date",
                   "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
@@ -725,7 +742,6 @@ def update_ft_daily_supplier_purchases_credit_notes_ts():
             mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
         mysql_conn.commit()
 
-        
     with mysql_engine.connect() as mysql_conn:
         daily_values_ts.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
@@ -733,22 +749,22 @@ def update_ft_daily_supplier_purchases_credit_notes_ts():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
-    
+
 
 def update_ft_daily_supplier_ap_credit_notes_ts():
-    
+
     table = 'ft_daily_supplier_ap_credit_notes_ts'
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mysql_engine.connect() as mysql_conn:
         get_date_params = {"date_col": f"as_of_date",
-                  "tbl": f"{table}"}
+                           "tbl": f"{table}"}
         latest_date = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
-    
+
     end_date = date.today()
-    end_date_str = end_date.strftime("%Y-%m-%d")    
+    end_date_str = end_date.strftime("%Y-%m-%d")
     latest_date = latest_date.values[0][0]
     latest_date_str = latest_date.strftime("%Y-%m-%d")
 
@@ -758,8 +774,9 @@ def update_ft_daily_supplier_ap_credit_notes_ts():
         ap_credit_notes = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/ft_daily_supplier_ap_credit_notes_ts.sql', params)
 
-    ap_credit_notes_ts = process_ft_daily_supplier_ap_credit_notes_ts(ap_credit_notes)
-    
+    ap_credit_notes_ts = process_ft_daily_supplier_ap_credit_notes_ts(
+        ap_credit_notes)
+
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}", "date_col": "as_of_date",
                   "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
@@ -769,6 +786,136 @@ def update_ft_daily_supplier_ap_credit_notes_ts():
 
     with mysql_engine.connect() as mysql_conn:
         ap_credit_notes_ts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def update_ft_daily_customer_sales_ts():
+
+    table = 'ft_daily_customer_sales_ts'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"as_of_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    latest_date = latest_date.values[0][0]
+    latest_date_str = latest_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{latest_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        daily_agg_sales = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/ft_daily_customer_sales_ts.sql', params)
+        customers = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/dim_customers.sql')
+
+    daily_agg_sales_ts = process_ft_daily_customer_sales_ts(
+        daily_agg_sales, customers)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "as_of_date",
+                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        daily_agg_sales_ts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def update_ft_daily_customer_ar_credit_notes_ts():
+
+    table = 'ft_daily_customer_ar_credit_notes_ts'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"as_of_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    latest_date = latest_date.values[0][0]
+    latest_date_str = latest_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{latest_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/init/ft_daily_customer_ar_credit_notes_ts.sql', params)
+
+    ar_credit_notes_ts = process_ft_daily_customer_ar_credit_notes_ts(
+        ar_credit_notes)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "as_of_date",
+                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_credit_notes_ts.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def update_ft_recent_incoming_payments():
+
+    table = 'ft_recent_incoming_payments'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"agg_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    latest_date = latest_date.values[0][0]
+    latest_date_str = latest_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{latest_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_current_incoming_payments.sql', params)
+
+    incoming_payments = process_ft_recent_incoming_payments(incoming_payments)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "agg_date",
+                  "start_date": f"'{latest_date_str}'", "end_date": f"'{end_date_str}'"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)

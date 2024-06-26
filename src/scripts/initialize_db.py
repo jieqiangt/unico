@@ -267,12 +267,10 @@ def init_ft_recent_sales():
             mssql_conn, f'./sql/mssql/query/int_current_sales.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
-        params = {"start_date": f"'{start_date_str}'",
-                  "end_date": f"'{end_date_str}'"}
-        purchase_prices = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        purchase_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql')
 
-    sales = process_ft_recent_sales(sales, purchase_prices)
+    sales = process_ft_recent_sales(sales, purchase_price)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}
@@ -371,11 +369,11 @@ def init_ft_pdt_monthly_summary_ts():
                   "end_date": f"'{end_date_str}'"}
         inv = get_data_from_query(
             mysql_conn, f'./sql/mysql/query/get_recent_inventory.sql', params)
-        recent_price = get_data_from_query(
-            mysql_conn, f'./sql/mysql/query/get_recent_purchase_prices.sql', params)
+        current_price = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_current_purchase_price.sql')
 
     pdt_monthly_summary_ts = process_ft_pdt_monthly_summary_ts(
-        sales, purchases, inv, recent_price)
+        sales, purchases, inv, current_price)
 
     with mysql_engine.connect() as mysql_conn:
         params = {"table": f"{table}"}
@@ -749,7 +747,7 @@ def init_ft_sales_agent_performance_ts():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date = end_date.replace(day=1) + relativedelta(months=-24)
     start_date_str = start_date.strftime("%Y-%m-%d")
     
     with mssql_engine.connect() as mssql_conn:

@@ -231,7 +231,7 @@ def calculate_pdt_summary(df, data_prefix, base=None, processed_qty=None):
     return summary
 
 
-def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_prices, query_start_date_str, purchase_sample_start_date_str, sales_sample_start_date_str, end_date_str, activity_cutoff_date_str):
+def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_price, query_start_date_str, purchase_sample_start_date_str, sales_sample_start_date_str, end_date_str, activity_cutoff_date_str):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
@@ -241,12 +241,6 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
 
     purchases_date_cols = get_date_cols(purchases)
     purchases = convert_dt_cols(purchases, purchases_date_cols)
-
-    purchase_prices['as_of_date'] = pd.to_datetime(
-        purchase_prices['as_of_date'])
-    purchase_prices.drop(columns=['previous_price'], inplace=True)
-    purchase_prices.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
 
     # filtering pdt giveaways
     sales = sales[sales['price'] > 0.01]
@@ -317,8 +311,8 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
     else:
         purchases_summary = purchases_within_sample_summary.copy()
 
-    profit = sales.merge(
-        purchase_prices, left_on=['doc_date', 'pdt_code'], right_on=['as_of_date', 'pdt_code'], how='left').merge(products, how='left', on=['pdt_code'])
+    profit = sales.merge(purchase_price, on='pdt_code', how='left').merge(
+        products, how='left', on=['pdt_code'])
 
     profit.loc[profit['purchase_price'].notnull(), 'profit_per_qty'] = profit['price'] - \
         profit['purchase_price']
@@ -373,21 +367,17 @@ def process_ft_pdt_summary(sales, qty_processed, purchases, products, purchase_p
     return pdt_summary
 
 
-def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, pdts):
+def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_price, pdts):
 
     date_cols = get_date_cols(current_sales)
     current_sales = convert_dt_cols(current_sales, date_cols)
 
     current_sales = current_sales[current_sales['price'] > 0.01]
-    purchase_prices['as_of_date'] = pd.to_datetime(
-        purchase_prices['as_of_date'])
-
     pdts = pdts[['pdt_code', 'processed_pdt_ind']]
 
     sales_orders_alerts = current_sales.merge(
         pdt_summary, on=['pdt_code', 'pdt_name'], how='left').merge(
-            purchase_prices, left_on=['doc_date', 'pdt_code'], right_on=['as_of_date', 'pdt_code'], how='left')
-    sales_orders_alerts = sales_orders_alerts.merge(
+            purchase_price, on='pdt_code', how='left').merge(
         pdts, on='pdt_code', how='left')
 
     sales_orders_alerts['sales_price_alert'] = (
@@ -402,12 +392,7 @@ def process_ft_sales_orders_alerts(current_sales, pdt_summary, purchase_prices, 
     )
 
     sales_orders_alerts['purchase_price_alert'] = (
-        sales_orders_alerts['price'] - sales_orders_alerts['weighted_price']) < 0
-
-    sales_orders_alerts.drop(
-        columns=['as_of_date', 'previous_price'], inplace=True)
-    sales_orders_alerts.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
+        sales_orders_alerts['price'] - sales_orders_alerts['purchase_price']) < 0
 
     return sales_orders_alerts
 
@@ -518,29 +503,18 @@ def process_procurement_ops_report(pdt_base, inv):
 
     return report[cols_seq]
 
-def process_ft_recent_sales(sales, purchase_prices):
+
+def process_ft_recent_sales(sales, purchase_price):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
 
-    purchase_prices_date_cols = get_date_cols(purchase_prices)
-    purchase_prices = convert_dt_cols(
-        purchase_prices, purchase_prices_date_cols)
-
     sales = sales[sales['price'] > 0.01]
 
     sales["agg_date"] = sales['doc_date'].dt.to_period('M').dt.to_timestamp()
-    purchase_prices['as_of_date'] = pd.to_datetime(
-        purchase_prices['as_of_date'])
-    purchase_prices.rename(columns={'as_of_date': 'doc_date'}, inplace=True)
 
     sales_with_purchase_price = sales.merge(
-        purchase_prices, on=['doc_date', 'pdt_code'], how='left')
-
-    sales_with_purchase_price.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
-    sales_with_purchase_price.drop(columns=['previous_price'], inplace=True)
-
+        purchase_price, on='pdt_code', how='left')
     sales_with_purchase_price['pc1'] = (sales_with_purchase_price['price'] -
                                         sales_with_purchase_price['purchase_price'])/sales_with_purchase_price['price']
 
@@ -566,7 +540,7 @@ def process_ft_recent_purchases(purchases):
     return purchases
 
 
-def process_ft_pdt_monthly_summary_ts(sales, purchases, inv, recent_price):
+def process_ft_pdt_monthly_summary_ts(sales, purchases, inv, current_price):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
@@ -574,8 +548,6 @@ def process_ft_pdt_monthly_summary_ts(sales, purchases, inv, recent_price):
     purchases = convert_dt_cols(purchases, purchases_date_cols)
     inv_date_cols = get_date_cols(inv)
     inv = convert_dt_cols(inv, inv_date_cols)
-    recent_price_date_cols = get_date_cols(recent_price)
-    recent_price = convert_dt_cols(recent_price, recent_price_date_cols)
 
     sales = sales[sales['price'] > 0.01]
     sales["agg_date"] = sales['doc_date'].dt.to_period('M').dt.to_timestamp()
@@ -583,11 +555,8 @@ def process_ft_pdt_monthly_summary_ts(sales, purchases, inv, recent_price):
         'M').dt.to_timestamp()
     inv["agg_date"] = inv['as_of_date'].dt.to_period(
         'M').dt.to_timestamp()
-    recent_price["agg_date"] = recent_price['as_of_date'].dt.to_period(
-        'M').dt.to_timestamp()
-    recent_price.rename(columns={'weighted_price': 'price'}, inplace=True)
-    inv = inv.merge(recent_price[['as_of_date', 'pdt_code', 'price']], on=[
-                    'as_of_date', 'pdt_code'])
+    current_price.rename(columns={'purchase_price': 'price'}, inplace=True)
+    inv = inv.merge(current_price, on='pdt_code')
 
     groupby_cols = [pd.Grouper(freq='MS'), 'pdt_code']
     price_req_cols = ['agg_date', 'pdt_code', 'price']
@@ -732,24 +701,16 @@ def process_int_pdt_purchase_price_ts(purchase_prices, end_date_str):
     return weighted_prices_output
 
 
-def process_ft_pdt_loss_summary(sales, purchase_prices, start_date_str, end_date_str):
+def process_ft_pdt_loss_summary(sales, purchase_price, start_date_str, end_date_str):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
-    purchase_prices_date_cols = get_date_cols(purchase_prices)
-    purchase_prices = convert_dt_cols(
-        purchase_prices, purchase_prices_date_cols)
-
-    purchase_prices.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
-    purchase_prices.drop(columns=['previous_price'], inplace=True)
 
     sales_req_cols = ['doc_date', 'pdt_code', 'pdt_name', 'qty', 'price']
     sales = sales[sales_req_cols]
     sales.rename(columns={'doc_date': 'as_of_date'}, inplace=True)
 
-    profit = sales.merge(purchase_prices, on=[
-                         'as_of_date', 'pdt_code'], how='left')
+    profit = sales.merge(purchase_price, on='pdt_code', how='left')
 
     profit['profit_loss_per_qty'] = profit['price'] - profit['purchase_price']
     profit['profit_loss'] = profit['profit_loss_per_qty'] * profit['qty']
@@ -806,6 +767,7 @@ def process_ft_customer_group_price_check_flagged_orders(flagged_orders):
     flagged_orders = convert_dt_cols(flagged_orders, date_cols)
 
     return flagged_orders
+
 
 def process_ft_processed_pdt_daily_output_ts(processed_pdt_output, end_date_str):
 
@@ -1137,102 +1099,123 @@ def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
 
     return pdt_monthly_qty
 
+
 def process_ft_daily_pdt_tracking_pdt_inv_value_ts(daily_pdt_inv_value, start_date_str, end_date_str):
-    
-    daily_pdt_inv_value['as_of_date'] = pd.to_datetime(daily_pdt_inv_value['as_of_date'])
+
+    daily_pdt_inv_value['as_of_date'] = pd.to_datetime(
+        daily_pdt_inv_value['as_of_date'])
     output_collate = []
-    
+
     date_range = pd.date_range(start_date_str, end_date_str)
-    
+
     for pdt_code in daily_pdt_inv_value['pdt_code'].unique():
-        
+
         tmp_daily_inv_value = daily_pdt_inv_value.loc[daily_pdt_inv_value['pdt_code'] == pdt_code, :]
-        tmp_daily_inv_value.sort_values(by='as_of_date',inplace=True)
-        tmp_daily_inv_value.set_index('as_of_date', inplace=True)       
+        tmp_daily_inv_value.sort_values(by='as_of_date', inplace=True)
+        tmp_daily_inv_value.set_index('as_of_date', inplace=True)
         tmp_daily_inv_value = tmp_daily_inv_value.resample(
-                'D', origin='start_day').sum().reindex(date_range).fillna(0)
-        tmp_daily_inv_value['previous_inv_value'] = tmp_daily_inv_value['inv_value'].shift(periods=1)
-        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value'] - tmp_daily_inv_value['previous_inv_value']
-        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value_change'].fillna(0)
-        
-        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] > 0, 'daily_pdt_label'] = 'INCREASE'
-        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] == 0, 'daily_pdt_label'] = 'NO CHANGE'
-        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change'] < 0, 'daily_pdt_label'] = 'DECREASE'
-        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value'] < 0, 'daily_pdt_label'] = 'NEGATIVE'
-        tmp_daily_inv_value.drop(columns=['inv_value_change','previous_inv_value', 'pdt_code'], inplace=True)
-        tmp_daily_inv_value.reset_index(inplace=True,names='as_of_date')
+            'D', origin='start_day').sum().reindex(date_range).fillna(0)
+        tmp_daily_inv_value['previous_inv_value'] = tmp_daily_inv_value['inv_value'].shift(
+            periods=1)
+        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value'] - \
+            tmp_daily_inv_value['previous_inv_value']
+        tmp_daily_inv_value['inv_value_change'] = tmp_daily_inv_value['inv_value_change'].fillna(
+            0)
+
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change']
+                                > 0, 'daily_pdt_label'] = 'INCREASE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change']
+                                == 0, 'daily_pdt_label'] = 'NO CHANGE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value_change']
+                                < 0, 'daily_pdt_label'] = 'DECREASE'
+        tmp_daily_inv_value.loc[tmp_daily_inv_value['inv_value']
+                                < 0, 'daily_pdt_label'] = 'NEGATIVE'
+        tmp_daily_inv_value.drop(
+            columns=['inv_value_change', 'previous_inv_value', 'pdt_code'], inplace=True)
+        tmp_daily_inv_value.reset_index(inplace=True, names='as_of_date')
         tmp_daily_inv_value['pdt_code'] = pdt_code
-        
+
         output_collate.append(tmp_daily_inv_value)
-        
+
     daily_pdt_inv_value_ts = pd.concat(output_collate, ignore_index=True)
 
     return daily_pdt_inv_value_ts
-    
 
-def process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value,start_date_str, end_date_str):
 
-    daily_agg_values = pd.concat([daily_agg_values,daily_inv_value],ignore_index=True)
-    
-    category_dict = daily_agg_values[['value_sub_category','value_category']].drop_duplicates().to_dict(orient='list')
-    category_mapping = dict(zip(category_dict['value_sub_category'],category_dict['value_category']))
-    
-    daily_agg_values['as_of_date'] = pd.to_datetime(daily_agg_values['as_of_date'])
+def process_ft_daily_agg_values_ts(daily_agg_values, daily_inv_value, start_date_str, end_date_str):
+
+    daily_agg_values = pd.concat(
+        [daily_agg_values, daily_inv_value], ignore_index=True)
+
+    category_dict = daily_agg_values[[
+        'value_sub_category', 'value_category']].drop_duplicates().to_dict(orient='list')
+    category_mapping = dict(
+        zip(category_dict['value_sub_category'], category_dict['value_category']))
+
+    daily_agg_values['as_of_date'] = pd.to_datetime(
+        daily_agg_values['as_of_date'])
     output_collate = []
-    
+
     date_range = pd.date_range(start_date_str, end_date_str)
-        
+
     for value_sub_category in daily_agg_values['value_sub_category'].unique():
-        
+
         value_category = category_mapping[value_sub_category]
-        
-        tmp_daily_agg_values = daily_agg_values.loc[daily_agg_values['value_sub_category'] == value_sub_category, :]
-        tmp_daily_agg_values.sort_values(by='as_of_date',inplace=True)
-        tmp_daily_agg_values.set_index('as_of_date', inplace=True)       
+
+        tmp_daily_agg_values = daily_agg_values.loc[daily_agg_values['value_sub_category']
+                                                    == value_sub_category, :]
+        tmp_daily_agg_values.sort_values(by='as_of_date', inplace=True)
+        tmp_daily_agg_values.set_index('as_of_date', inplace=True)
         tmp_daily_agg_values = tmp_daily_agg_values.resample(
-                'D', origin='start_day').sum().reindex(date_range).fillna(0)
-        tmp_daily_agg_values['previous_value'] = tmp_daily_agg_values['value'].shift(periods=1)
-        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value'] - tmp_daily_agg_values['previous_value']
-        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value_change'].fillna(0)
-        
-        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] > 0, 'daily_value_label'] = 'INCREASE'
-        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] == 0, 'daily_value_label'] = 'NO CHANGE'
-        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change'] < 0, 'daily_value_label'] = 'DECREASE'
-        tmp_daily_agg_values.loc[tmp_daily_agg_values['value'] < 0, 'daily_value_label'] = 'NEGATIVE'
-        tmp_daily_agg_values.drop(columns=['value_change','previous_value', 'value_category', 'value_sub_category'], inplace=True)
-        tmp_daily_agg_values.reset_index(inplace=True,names='as_of_date')
+            'D', origin='start_day').sum().reindex(date_range).fillna(0)
+        tmp_daily_agg_values['previous_value'] = tmp_daily_agg_values['value'].shift(
+            periods=1)
+        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value'] - \
+            tmp_daily_agg_values['previous_value']
+        tmp_daily_agg_values['value_change'] = tmp_daily_agg_values['value_change'].fillna(
+            0)
+
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change']
+                                 > 0, 'daily_value_label'] = 'INCREASE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change']
+                                 == 0, 'daily_value_label'] = 'NO CHANGE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value_change']
+                                 < 0, 'daily_value_label'] = 'DECREASE'
+        tmp_daily_agg_values.loc[tmp_daily_agg_values['value']
+                                 < 0, 'daily_value_label'] = 'NEGATIVE'
+        tmp_daily_agg_values.drop(columns=[
+                                  'value_change', 'previous_value', 'value_category', 'value_sub_category'], inplace=True)
+        tmp_daily_agg_values.reset_index(inplace=True, names='as_of_date')
         tmp_daily_agg_values['value_sub_category'] = value_sub_category
         tmp_daily_agg_values['value_category'] = value_category
-        
+
         output_collate.append(tmp_daily_agg_values)
-        
+
     daily_agg_values_ts = pd.concat(output_collate, ignore_index=True)
 
     return daily_agg_values_ts
-        
+
+
 def process_ft_sales_agent_performance_ts(monthly_agg_sales, customers):
-    
+
     date_cols = get_date_cols(monthly_agg_sales)
     monthly_agg_sales = convert_dt_cols(monthly_agg_sales, date_cols)
-    
-    customer_groups = customers.loc[: , ['customer_group_name','payment_terms']].copy()
+
+    customer_groups = customers.loc[:, [
+        'customer_group_name', 'payment_terms']].copy()
     customer_groups.drop_duplicates(inplace=True)
-    customer_groups = customer_groups.groupby(['customer_group_name'])['payment_terms'].apply(lambda x: '/'.join(x)).reset_index()
-    monthly_agg_sales = monthly_agg_sales.merge(customer_groups, on='customer_group_name', how='left')
-    
+    customer_groups = customer_groups.groupby(['customer_group_name'])[
+        'payment_terms'].apply(lambda x: '/'.join(x)).reset_index()
+    monthly_agg_sales = monthly_agg_sales.merge(
+        customer_groups, on='customer_group_name', how='left')
+
     return monthly_agg_sales
-    
-def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_str, end_date_str):
+
+
+def process_ft_customer_group_top_pdts(sales, purchase_price, pdts, start_date_str, end_date_str):
 
     sales_date_cols = get_date_cols(sales)
     sales = convert_dt_cols(sales, sales_date_cols)
-    purchase_prices_date_cols = get_date_cols(purchase_prices)
-    purchase_prices = convert_dt_cols(
-        purchase_prices, purchase_prices_date_cols)
-
-    purchase_prices.rename(
-        columns={'weighted_price': 'purchase_price'}, inplace=True)
-    purchase_prices.drop(columns=['previous_price'], inplace=True)
 
     pdts = pdts[['pdt_code', 'processed_pdt_ind']]
 
@@ -1243,8 +1226,7 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_
     sales = sales[~sales['pdt_code'].str.startswith('ZS')]
     sales.rename(columns={'doc_date': 'as_of_date'}, inplace=True)
 
-    profit = sales.merge(purchase_prices, on=[
-                         'as_of_date', 'pdt_code'], how='left')
+    profit = sales.merge(purchase_price, on='pdt_code', how='left')
 
     profit['profit_per_qty'] = profit['price'] - profit['purchase_price']
     profit['profit'] = profit['profit_per_qty'] * profit['qty']
@@ -1283,15 +1265,20 @@ def process_ft_customer_group_top_pdts(sales, purchase_prices, pdts, start_date_
 
     return customer_group_top_pdts
 
+
 def process_ft_daily_customer_sales_ts(daily_agg_sales, customers):
-    
+
     date_cols = get_date_cols(daily_agg_sales)
     daily_agg_sales = convert_dt_cols(daily_agg_sales, date_cols)
-    customer_required_cols = ['customer_code','name','address','zipcode','is_active','sales_employee','industry','trade_ind','payment_terms','first_sales_date','latest_sales_date','relationship_length']
-    customers = customers[customer_required_cols].rename(columns = {'name': 'customer_name'})
-    daily_agg_sales_ts = daily_agg_sales.merge(customers, on='customer_code',how='left')
-    
+    customer_required_cols = ['customer_code', 'name', 'address', 'zipcode', 'is_active', 'sales_employee',
+                              'industry', 'trade_ind', 'payment_terms', 'first_sales_date', 'latest_sales_date', 'relationship_length']
+    customers = customers[customer_required_cols].rename(
+        columns={'name': 'customer_name'})
+    daily_agg_sales_ts = daily_agg_sales.merge(
+        customers, on='customer_code', how='left')
+
     return daily_agg_sales_ts
+
 
 def process_ft_daily_sales_employee_value_ts(sales_value_ts):
 
@@ -1300,12 +1287,14 @@ def process_ft_daily_sales_employee_value_ts(sales_value_ts):
 
     return sales_value_ts
 
+
 def process_ft_daily_customer_ar_credit_notes_ts(ar_credit_notes):
 
     date_cols = get_date_cols(ar_credit_notes)
     ar_credit_notes = convert_dt_cols(ar_credit_notes, date_cols)
 
     return ar_credit_notes
+
 
 def process_ft_recent_incoming_payments(incoming_payments):
 
@@ -1314,15 +1303,20 @@ def process_ft_recent_incoming_payments(incoming_payments):
 
     return incoming_payments
 
+
 def process_ft_daily_supplier_purchases_ts(daily_agg_purchases, suppliers):
-    
+
     date_cols = get_date_cols(daily_agg_purchases)
     daily_agg_purchases = convert_dt_cols(daily_agg_purchases, date_cols)
-    supplier_required_cols = ['supplier_code','name','entity_type','address','zipcode','is_active','overseas_local_ind','trade_ind','payment_terms','first_purchase_date','latest_purchase_date','relationship_length']
-    suppliers = suppliers[supplier_required_cols].rename(columns = {'name': 'supplier_name'})
-    daily_agg_purchases_ts = daily_agg_purchases.merge(suppliers, on='supplier_code',how='left')
-    
+    supplier_required_cols = ['supplier_code', 'name', 'entity_type', 'address', 'zipcode', 'is_active', 'overseas_local_ind',
+                              'trade_ind', 'payment_terms', 'first_purchase_date', 'latest_purchase_date', 'relationship_length']
+    suppliers = suppliers[supplier_required_cols].rename(
+        columns={'name': 'supplier_name'})
+    daily_agg_purchases_ts = daily_agg_purchases.merge(
+        suppliers, on='supplier_code', how='left')
+
     return daily_agg_purchases_ts
+
 
 def process_ft_daily_supplier_ap_credit_notes_ts(ap_credit_notes):
 
@@ -1331,8 +1325,9 @@ def process_ft_daily_supplier_ap_credit_notes_ts(ap_credit_notes):
 
     return ap_credit_notes
 
+
 def process_ft_recent_outgoing_payments(outgoing_payments):
-    
+
     date_cols = get_date_cols(outgoing_payments)
     outgoing_payments = convert_dt_cols(outgoing_payments, date_cols)
 
@@ -1340,16 +1335,18 @@ def process_ft_recent_outgoing_payments(outgoing_payments):
 
 
 def process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_credit_notes, suppliers, pdts):
-    
-    date_cols = get_date_cols(daily_agg_purchases_credit_notes)
-    daily_agg_purchases_credit_notes = convert_dt_cols(daily_agg_purchases_credit_notes, date_cols)
-    
-    pdts_required_cols = ['pdt_code','pdt_name','pdt_main_category']
-    pdts = pdts[pdts_required_cols]
-    supplier_required_cols = ['supplier_code','name','entity_type','address','zipcode','is_active','new_ind','overseas_local_ind','trade_ind','payment_terms','first_purchase_date','latest_purchase_date','relationship_length']
-    suppliers = suppliers[supplier_required_cols].rename(columns = {'name': 'supplier_name'})
-    daily_agg_values_ts = daily_agg_purchases_credit_notes.merge(suppliers, on='supplier_code',how='left').merge(pdts, on='pdt_code',how='left')
 
-    
+    date_cols = get_date_cols(daily_agg_purchases_credit_notes)
+    daily_agg_purchases_credit_notes = convert_dt_cols(
+        daily_agg_purchases_credit_notes, date_cols)
+
+    pdts_required_cols = ['pdt_code', 'pdt_name', 'pdt_main_category']
+    pdts = pdts[pdts_required_cols]
+    supplier_required_cols = ['supplier_code', 'name', 'entity_type', 'address', 'zipcode', 'is_active', 'new_ind',
+                              'overseas_local_ind', 'trade_ind', 'payment_terms', 'first_purchase_date', 'latest_purchase_date', 'relationship_length']
+    suppliers = suppliers[supplier_required_cols].rename(
+        columns={'name': 'supplier_name'})
+    daily_agg_values_ts = daily_agg_purchases_credit_notes.merge(
+        suppliers, on='supplier_code', how='left').merge(pdts, on='pdt_code', how='left')
+
     return daily_agg_values_ts
-    
