@@ -8,9 +8,21 @@ WITH dim_customers AS (
             ELSE COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName)
         END AS 'customer_group_name',
         OSLP.SlpName AS 'sales_employee',
-        CONCAT(COALESCE(Address,''), ' ', COALESCE(Block,''), ' ', COALESCE(Building,''), ' ' , COALESCE(ZipCode,'')) AS 'address',
+        CONCAT(
+            COALESCE(Address, ''),
+            ' ',
+            COALESCE(Block, ''),
+            ' ',
+            COALESCE(Building, ''),
+            ' ',
+            COALESCE(ZipCode, '')
+        ) AS 'address',
         ZipCode AS 'zipcode',
-        OOND.IndName AS 'industry',
+        CASE
+            WHEN OOND.IndName IS NULL THEN 'HoReCa'
+            WHEN OOND.IndName = 'BAD DEBT' THEN 'HoReCa'
+            ELSE OOND.IndName
+        END AS 'industry',
         OCRG.GroupName AS 'trade_ind',
         OCTG.PymntGroup AS 'payment_terms',
         ValidFor AS 'is_active'
