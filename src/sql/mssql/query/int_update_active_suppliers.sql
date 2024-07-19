@@ -11,7 +11,7 @@ all_suppliers AS (
     SELECT DISTINCT CardCode FROM OPCH
 )
 SELECT
-    all_suppliers.CardCode AS 'customer_code',
+    all_suppliers.CardCode AS 'supplier_code',
     CASE
         WHEN active_suppliers.CardCode IS NULL THEN 0
         ELSE 1
