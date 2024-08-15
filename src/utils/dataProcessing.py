@@ -1,11 +1,13 @@
 
 import pandas as pd
 import numpy as np
+import math
 from datetime import datetime
 from dateutil import relativedelta
-from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column, conditional_formatting_redfill, conditional_formatting_greenfill, format_column_to_percentage, format_column_to_date
 
+from utils.excelUtils import auto_adjust_column, format_column_to_currency, add_borders_to_column, conditional_formatting_redfill, conditional_formatting_greenfill, format_column_to_percentage, format_column_to_date
 from utils.pandaUtils import get_date_cols, convert_dt_cols, merge_all_df
+from utils.oneMap import search_postal
 
 
 def process_ft_cashflow_monthly_ts(outgoing, incoming):
@@ -1350,3 +1352,55 @@ def process_ft_daily_supplier_purchases_credit_notes_ts(daily_agg_purchases_cred
         suppliers, on='supplier_code', how='left').merge(pdts, on='pdt_code', how='left')
 
     return daily_agg_values_ts
+
+
+def get_lat_long_for_bp(bp):
+
+    zipcodes = bp['zipcode']
+    latitude_collate = []
+    longitude_collate = []
+    
+    
+
+    for zipcode in zipcodes:
+        
+        latitude = np.nan
+        longitude = np.nan
+
+        try:
+            float(zipcode)
+        except:
+            latitude_collate.append(latitude)
+            longitude_collate.append(longitude)
+            continue
+
+        if math.isnan(float(zipcode)) | len(str(zipcode)) != 6:
+            latitude_collate.append(latitude)
+            longitude_collate.append(longitude)
+            continue
+
+        response = search_postal(zipcode)
+
+        if response.ok:
+            result = response.json()
+
+        if len(result["results"]) == 0:
+            latitude_collate.append(latitude)
+            longitude_collate.append(longitude)
+            continue
+        else:
+            latitude_collate.append(result['results'][0].get('LATITUDE',np.nan))
+            longitude_collate.append(result['results'][0].get('LONGITUDE',np.nan))
+
+    bp['latitude'] = latitude_collate
+    bp['longitude'] = longitude_collate
+
+    return bp
+
+
+def process_pivoted_monthly_sales_by_pdt_level(pivoted_revenue, customer_code_list, customer_name_list, payment_terms_list, sales_employee_list,  file_name):
+
+    output = pivoted_revenue.merge(customer_code_list, on='pdt_code', how='left').merge(customer_name_list, on='pdt_code', how='left').merge(
+        payment_terms_list, on='pdt_code', how='left').merge(sales_employee_list, on='pdt_code', how='left')
+    
+    output.to_csv(f'{file_name}.csv',index=False)

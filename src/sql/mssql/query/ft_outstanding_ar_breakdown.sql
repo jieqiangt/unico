@@ -10,7 +10,7 @@ WITH accounts_receivable AS (
         OCRG.GroupName AS 'customer_type',
         OINV.SlpCode AS 'sales_employee_code',
         OSLP.SlpName AS 'sales_employee_name',
-        SUM(OINV.DocTotal) - SUM(OINV.PaidToDate) AS 'amount_with_tax'
+        SUM(OINV.DocTotal - OINV.PaidToDate) AS 'amount_with_tax'
     FROM
         OINV
         LEFT JOIN OCRD ON OINV.CardCode = OCRD.CardCode

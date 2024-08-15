@@ -6,7 +6,7 @@ WITH accounts_payable AS (
         OCRG.GroupName AS 'vendor_type',
         OPCH.SlpCode AS 'sales_employee_code',
         OSLP.SlpName AS 'sales_employee_name',
-        SUM(OPCH.DocTotal) - SUM(PaidToDate) AS 'amount_with_tax'
+        SUM(OPCH.DocTotal - OPCH.PaidToDate) AS 'amount_with_tax'
     FROM
         OPCH
         LEFT JOIN OCRD ON OPCH.CardCode = OCRD.CardCode
