@@ -30,7 +30,792 @@ RDS_CREDS = {"host": os.getenv('RDS_HOST'),
 END_DATE = date.today()
 END_DATE_STR = END_DATE.strftime("%Y-%m-%d")
 
+TODAY = date.today()
+TODAY_STR = TODAY.strftime("%Y-%m-%d")
 
+LOWER_REFRESH_MONTHS = 1
+HIGHER_REFRESH_MONTHS = 12
+
+def update_trs_ap_invoices():
+
+    table = 'trs_ap_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def update_trs_ar_invoices():
+
+    table = 'trs_ar_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_trs_credit_notes():
+
+    table = 'trs_credit_notes'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+def update_trs_incoming_payments():
+
+    table = 'trs_incoming_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_trs_outgoing_payments():
+
+    table = 'trs_outgoing_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def update_trs_purchase_invoices():
+
+    table = 'trs_purchase_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_trs_sales_orders():
+
+    table = 'trs_sales_orders'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_daily_agg_ap_invoices():
+
+    table = 'ft_daily_agg_ap_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_daily_agg_ar_invoices():
+
+    table = 'ft_daily_agg_ar_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_daily_agg_credit_notes():
+
+    table = 'ft_daily_agg_credit_notes'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+def update_ft_daily_agg_incoming_payments():
+
+    table = 'ft_daily_agg_incoming_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_daily_agg_outgoing_payments():
+
+    table = 'ft_daily_agg_outgoing_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+        
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+def update_ft_daily_agg_purchase_invoices():
+
+    table = 'ft_daily_agg_purchase_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_daily_agg_sales_orders():
+
+    table = 'ft_daily_agg_sales_orders'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_ap_invoices():
+
+    table = 'ft_monthly_agg_ap_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_ar_invoices():
+
+    table = 'ft_monthly_agg_ar_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_credit_notes():
+
+    table = 'ft_monthly_agg_credit_notes'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-HIGHER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_incoming_payments():
+
+    table = 'ft_monthly_agg_incoming_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_outgoing_payments():
+
+    table = 'ft_monthly_agg_outgoing_payments'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_purchase_invoices():
+
+    table = 'ft_monthly_agg_purchase_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_sales_orders():
+
+    table = 'ft_monthly_agg_sales_orders'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+    
 def update_ft_cashflow_monthly_ts():
 
     table = 'ft_cashflow_monthly_ts'
@@ -185,7 +970,7 @@ def update_ft_sales_agent_performance_ts():
 def update_ft_recent_sales():
 
     table = 'ft_recent_sales'
-    days_of_data = 14
+    days_of_data = 30
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -237,7 +1022,7 @@ def update_ft_recent_sales():
 def update_ft_recent_credit_notes():
 
     table = 'ft_recent_credit_notes'
-    days_of_data = 14
+    days_of_data = 30
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -284,7 +1069,7 @@ def update_ft_recent_credit_notes():
 def update_ft_recent_purchases():
 
     table = 'ft_recent_purchases'
-    days_of_data = 14
+    days_of_data = 30
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -380,7 +1165,7 @@ def update_ft_recent_ar_invoices():
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
-    days_of_data = 14
+    days_of_data = 30
     start_date = END_DATE + relativedelta(days=-days_of_data)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
@@ -427,7 +1212,7 @@ def update_ft_recent_ap_invoices():
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
-    days_of_data = 14
+    days_of_data = 30
     start_date = END_DATE + relativedelta(days=-days_of_data)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
@@ -921,3 +1706,6 @@ def update_ft_recent_incoming_payments():
     record_data_refresh_log(table)
     mysql_engine.dispose()
     mssql_engine.dispose()
+    
+    
+
