@@ -2,16 +2,18 @@ WITH ap_payments AS (
     SELECT
         DATEFROMPARTS(YEAR(DocDate), MONTH(DocDate), 1) AS 'agg_date',
         GroupName AS 'trade_classification',
-        PaidToDate 'paid',
-        DocTotal - PaidToDate AS 'outstanding_amt'
+        SUM(PaidToDate) 'paid',
+        SUM(DocTotal - PaidToDate) AS 'outstanding_amt'
     FROM
         OPCH
         LEFT JOIN OCRD ON OPCH.CardCode = OCRD.CardCode
         LEFT JOIN OCRG ON OCRD.GroupCode = OCRG.GroupCode
     WHERE
-        DocDate BETWEEN {{start_date}}
-        AND {{end_date}}
+        DocDate BETWEEN {{start_date}} AND {{end_date}}
         AND CANCELED = 'N'
+    GROUP BY
+        DATEFROMPARTS(YEAR(DocDate), MONTH(DocDate), 1),
+        OCRG.GroupName
 ),
 ap_payments_long AS (
     SELECT
@@ -40,16 +42,15 @@ ar_payments AS (
         DATEFROMPARTS(YEAR(OINV.DocDate), MONTH(OINV.DocDate), 1) AS 'agg_date',
         OCRG.GroupName AS 'trade_classification',
         SUM(OINV.PaidToDate) AS 'paid',
-        SUM(OINV.DocTotal) - SUM(OINV.PaidToDate) AS 'outstanding_amt'
+        SUM(OINV.DocTotal - OINV.PaidToDate) AS 'outstanding_amt'
     FROM
         OINV
         LEFT JOIN OCRD ON OINV.CardCode = OCRD.CardCode
         LEFT JOIN OCRG ON OCRD.GroupCode = OCRG.GroupCode
-        LEFT JOIN OSLP ON OINV.SlpCode = OSLP.SlpCode
     WHERE
-        OINV.DocDate BETWEEN {{start_date}} AND {{end_date}}
+        DocDate BETWEEN {{start_date}} AND {{end_date}}
         AND OINV.CANCELED = 'N'
-    GROUP BY 
+    GROUP BY
         DATEFROMPARTS(YEAR(OINV.DocDate), MONTH(OINV.DocDate), 1),
         OCRG.GroupName
 ),
@@ -90,7 +91,7 @@ GROUP BY
     payment_status,
     trade_classification,
     amount_type
-UNION 
+UNION
 ALL
 SELECT
     agg_date,
