@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_recent_credit_notes, process_ft_daily_pdt_tracking_pdt_inv_value_ts, process_ft_daily_agg_values_ts, process_ft_sales_agent_performance_ts, process_ft_daily_customer_sales_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_customer_ar_credit_notes_ts, process_ft_recent_incoming_payments, process_ft_daily_supplier_purchases_ts, process_ft_daily_supplier_ap_credit_notes_ts, process_ft_recent_outgoing_payments, process_ft_daily_supplier_purchases_credit_notes_ts
+from utils.dataProcessing import process_ft_cashflow_monthly_ts, process_ft_cashflow_monthly_by_type_ts, process_ft_suppliers_monthly_pv_ts, process_ft_recent_sales, process_ft_recent_purchases, process_ft_pdt_monthly_summary_ts, process_ft_recent_ar_invoices, process_ft_processed_pdt_daily_output_ts, process_ft_daily_qty_value_tracking_ts, process_ft_recent_credit_notes, process_ft_daily_pdt_tracking_pdt_inv_value_ts, process_ft_daily_agg_values_ts, process_ft_sales_agent_performance_ts, process_ft_daily_customer_sales_ts, process_ft_daily_sales_employee_value_ts, process_ft_daily_customer_ar_credit_notes_ts, process_ft_recent_incoming_payments, process_ft_daily_supplier_purchases_ts, process_ft_daily_supplier_ap_credit_notes_ts, process_ft_recent_outgoing_payments, process_ft_daily_supplier_purchases_credit_notes_ts, get_lat_long_for_bp
 from utils.logging import record_data_refresh_log
 import pandas as pd
 load_dotenv()
@@ -37,15 +37,17 @@ def init_dim_customers():
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mssql_engine.connect() as mssql_conn:
-        data = get_data_from_query(
+        customers = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/{table}.sql')
+        
+    customers_with_lat_long = get_lat_long_for_bp(customers)
 
     with mysql_engine.connect() as mysql_conn:
         drop_table(mysql_conn, table)
         execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
 
     with mysql_engine.connect() as mysql_conn:
-        data.to_sql(table, con=mysql_conn, if_exists='append', index=False)
+        customers_with_lat_long.to_sql(table, con=mysql_conn, if_exists='append', index=False)
 
     mysql_engine.dispose()
     mssql_engine.dispose()
@@ -59,15 +61,17 @@ def init_dim_suppliers():
     mysql_engine = create_mysql_engine(**RDS_CREDS)
 
     with mssql_engine.connect() as mssql_conn:
-        data = get_data_from_query(
+        suppliers = get_data_from_query(
             mssql_conn, f'./sql/mssql/init/{table}.sql')
+        
+    suppliers_with_lat_long = get_lat_long_for_bp(suppliers)
 
     with mysql_engine.connect() as mysql_conn:
         drop_table(mysql_conn, table)
         execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
 
     with mysql_engine.connect() as mysql_conn:
-        data.to_sql(table, con=mysql_conn, if_exists='append',
+        suppliers_with_lat_long.to_sql(table, con=mysql_conn, if_exists='append',
                     index=False)
 
     mysql_engine.dispose()
@@ -747,7 +751,7 @@ def init_ft_sales_agent_performance_ts():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date.replace(day=1) + relativedelta(months=-24)
+    start_date = end_date.replace(day=1) + relativedelta(months=-30)
     start_date_str = start_date.strftime("%Y-%m-%d")
     
     with mssql_engine.connect() as mssql_conn:
@@ -1046,5 +1050,676 @@ def init_ft_daily_supplier_purchases_credit_notes_ts():
             table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_ar_ap_payment_diff_ts():
+    
+    table = 'ft_ar_ap_payment_diff_ts'
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-36)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_ap_diff = get_data_from_query(mssql_conn, f'./sql/mssql/query/ft_ar_ap_payment_diff_ts.sql', params)
+    
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}"}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+        
+    with mysql_engine.connect() as mysql_conn:
+        ar_ap_diff.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+
+
+def init_trs_ap_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_ap_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_ar_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_ar_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_credit_notes():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_credit_notes'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_incoming_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_incoming_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_outgoing_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_outgoing_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_purchase_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_purchase_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_sales_orders():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_sales_orders'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_trs_ar_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_ar_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_ap_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_ap_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_ar_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_ar_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_credit_notes():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_credit_notes'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_incoming_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_incoming_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_outgoing_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_outgoing_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_purchase_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_purchase_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_daily_agg_sales_orders():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_sales_orders'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_ap_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_ap_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ap_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_ap_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ap_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_ar_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_ar_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        ar_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_ar_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        ar_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_credit_notes():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_credit_notes'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_credit_notes.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_incoming_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_incoming_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        incoming_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_incoming_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        incoming_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_outgoing_payments():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_outgoing_payments'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        outgoing_payments = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_outgoing_payments.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        outgoing_payments.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_purchase_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_purchase_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        purchase_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_purchase_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        purchase_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_sales_orders():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_sales_orders'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_sales_orders.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
     mysql_engine.dispose()
     mssql_engine.dispose()
