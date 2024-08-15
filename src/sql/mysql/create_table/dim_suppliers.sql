@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS dim_suppliers (
     entity_type VARCHAR(1),
     address VARCHAR(255),
     zipcode VARCHAR(255),
+    latitude FLOAT,
+    longitude FLOAT,
     overseas_local_ind VARCHAR(50),
     trade_ind VARCHAR(25),
     payment_terms VARCHAR(25),

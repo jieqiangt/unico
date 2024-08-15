@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS dim_customers (
     entity_type VARCHAR(1) NOT NULL,
     address VARCHAR(255),
     zipcode VARCHAR(255),
+    latitude FLOAT,
+    longitude FLOAT,
     industry VARCHAR(100),
     trade_ind VARCHAR(25) NOT NULL,
     payment_terms VARCHAR(25) NOT NULL,
