@@ -1,5 +1,5 @@
 from utils.dbUtils import create_mysql_engine,  execute_in_mysql, get_data_from_query, create_mssql_engine
-from utils.dataProcessing import process_current_inventory_report, process_sales_pricing_report
+from utils.dataProcessing import process_current_inventory_report, process_sales_pricing_report, process_pivoted_monthly_sales_by_pdt_level, process_pricing_report_for_customers
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -69,3 +69,47 @@ def export_sales_pricing_report():
     process_sales_pricing_report(
         inv_with_price, pdt_industry_pc, f"{file_name}")
     record_data_refresh_log(f'{file_name}_excel')
+    
+def export_pricing_report_for_customers():
+
+    file_name = f'{END_DATE_STR}_pricing_report_for_customers'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    
+    with mssql_engine.connect() as mssql_conn:
+        pdt_prices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/pricing_report_for_customers.sql')
+    mssql_engine.dispose()
+
+    process_pricing_report_for_customers(
+        pdt_prices, f"{file_name}")
+    record_data_refresh_log(f'{file_name}_excel')
+    
+    
+def export_pivoted_monthly_sales_by_pdt_level():
+
+    file_name = f'pivoted_monthly_sales_by_pdt_level'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    
+    start_date = END_DATE.replace(day=1).replace(month=6)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{END_DATE_STR}'"}
+        pivoted_revenue = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_pdt_level_revenue_pivoted_by_month.sql', params)
+        customer_code_list = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_customer_code_list_for_each_pdt.sql')
+        customer_name_list = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_customer_name_list_for_each_pdt.sql')
+        payment_terms_list = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_payment_terms_list_for_each_pdt.sql')
+        sales_employee_list = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/int_sales_employee_list_for_each_pdt.sql')
+    
+    mssql_engine.dispose()
+
+    process_pivoted_monthly_sales_by_pdt_level(
+        pivoted_revenue, customer_code_list, customer_name_list, payment_terms_list, sales_employee_list,  f"{file_name}")
+    record_data_refresh_log(f'{file_name}_excel')
+    

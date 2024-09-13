@@ -1088,6 +1088,33 @@ def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
                 add_borders_to_column(column, num_headers=2)
 
 
+def process_pricing_report_for_customers(pdt_prices, file_name):
+
+
+    with pd.ExcelWriter(f'{file_name}.xlsx', engine='openpyxl') as writer:
+
+        for pdt_cat in pdt_prices['pdt_main_cat'].unique():
+
+            output_sheet = pdt_prices[pdt_prices['pdt_main_cat'] == pdt_cat]
+            output_sheet.columns = pdt_prices.columns
+            
+            output_sheet = output_sheet.sort_values(
+                by='pdt_name', ascending=False)
+            output_sheet.to_excel(writer, sheet_name=pdt_cat,
+                                  index=False, header=True, startrow=0)
+
+            worksheet = writer.sheets[pdt_cat]
+            
+            for column in worksheet.columns:
+                auto_adjust_column(worksheet, column, header_row=0)
+                if "price" in column[0].value:
+                    format_column_to_currency(column)
+                if "rsp" in column[0].value:
+                    format_column_to_currency(column)
+                add_borders_to_column(column, num_headers=1)
+
+    
+
 def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
 
     date_cols = get_date_cols(pdt_monthly_qty)
