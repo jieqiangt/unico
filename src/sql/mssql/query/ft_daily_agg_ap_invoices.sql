@@ -1,6 +1,10 @@
 SELECT
     DATEFROMPARTS(YEAR(OPCH.DocDate), MONTH(OPCH.DocDate), 1) AS 'start_of_month',
-    OPCH.DocDate AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(DocDate),
+        MONTH(DocDate),
+        DAY(DocDate)
+    ) AS 'doc_date',
     OPCH.CardCode AS 'vendor_code',
     OPCH.SlpCode AS 'sales_employee_code',
     SUM(OPCH.DocTotal) AS 'amount',

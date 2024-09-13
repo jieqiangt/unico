@@ -1,6 +1,10 @@
 SELECT
     DATEFROMPARTS(YEAR(ORCT.DocDate), MONTH(ORCT.DocDate), 1) AS 'start_of_month',
-    DocDate AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(DocDate),
+        MONTH(DocDate),
+        DAY(DocDate)
+    ) AS 'doc_date',
     DocNum AS 'doc_num',
     ORCT.CardCode AS 'customer_code',
     DocTotal AS 'amount'

@@ -1,5 +1,9 @@
 SELECT
-    TRIM(CONVERT(char, PCH1.DocDate, 112)) AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(PCH1.DocDate),
+        MONTH(PCH1.DocDate),
+        DAY(PCH1.DocDate)
+    ) AS 'doc_date',
 	DATEFROMPARTS(YEAR(PCH1.DocDate), MONTH(PCH1.DocDate), 1) AS 'start_of_month',
     OPCH.DocNum AS 'doc_num',
 	PCH1.LineNum AS 'line_num',

@@ -1,5 +1,9 @@
 SELECT
-    OINV.DocDate AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(DocDate),
+        MONTH(DocDate),
+        DAY(DocDate)
+    ) AS 'doc_date',
     DATEFROMPARTS(YEAR(OINV.DocDate), MONTH(OINV.DocDate), 1) AS 'start_of_month',
     OINV.DocNum AS 'doc_num',
     OINV.CardCode AS 'customer_code',

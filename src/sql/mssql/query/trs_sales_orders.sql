@@ -1,6 +1,10 @@
 SELECT
     ORDR.DocNum AS 'doc_num',
-    TRIM(CONVERT(char, RDR1.DocDate, 112)) AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(RDR1.DocDate),
+        MONTH(RDR1.DocDate),
+        DAY(RDR1.DocDate)
+    ) AS 'doc_date',
 	DATEFROMPARTS(YEAR(RDR1.DocDate), MONTH(RDR1.DocDate), 1) AS 'start_of_month',
     RDR1.LineNum AS 'line_num',
     ORDR.CardCode AS 'customer_code',

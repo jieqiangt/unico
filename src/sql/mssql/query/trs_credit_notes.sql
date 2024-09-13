@@ -1,5 +1,9 @@
 SELECT
-    TRIM(CONVERT(char, RIN1.DocDate, 112)) AS 'doc_date',
+    DATEFROMPARTS(
+        YEAR(RIN1.DocDate),
+        MONTH(RIN1.DocDate),
+        DAY(RIN1.DocDate)
+    ) AS 'doc_date',
     DATEFROMPARTS(YEAR(RIN1.DocDate), MONTH(RIN1.DocDate), 1) AS 'start_of_month',
     ORIN.DocNum AS 'doc_num',
     RIN1.LineNum AS 'line_num',
