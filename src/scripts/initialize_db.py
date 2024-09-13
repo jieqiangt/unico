@@ -1289,6 +1289,35 @@ def init_trs_sales_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
+def init_trs_sales_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'trs_sales_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
 def init_trs_ar_invoices():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
@@ -1521,6 +1550,35 @@ def init_ft_daily_agg_sales_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
+def init_ft_daily_agg_sales_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_daily_agg_sales_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
 def init_ft_monthly_agg_ap_invoices():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
@@ -1719,6 +1777,35 @@ def init_ft_monthly_agg_sales_orders():
 
     with mysql_engine.connect() as mysql_conn:
         sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_agg_sales_invoices():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-60)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_monthly_agg_sales_invoices'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     mysql_engine.dispose()

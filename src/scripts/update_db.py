@@ -297,6 +297,43 @@ def update_trs_sales_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
+def update_trs_sales_invoices():
+
+    table = 'trs_sales_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/trs_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
 def update_ft_daily_agg_ap_invoices():
 
     table = 'ft_daily_agg_ap_invoices'
@@ -556,6 +593,43 @@ def update_ft_daily_agg_sales_orders():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
+def update_ft_daily_agg_sales_invoices():
+
+    table = 'ft_daily_agg_sales_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"doc_date",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_agg_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "doc_date",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
 def update_ft_monthly_agg_ap_invoices():
 
     table = 'ft_monthly_agg_ap_invoices'
@@ -809,6 +883,43 @@ def update_ft_monthly_agg_sales_orders():
 
     with mysql_engine.connect() as mysql_conn:
         sales_orders.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def update_ft_monthly_agg_sales_invoices():
+
+    table = 'ft_monthly_agg_sales_invoices'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    with mysql_engine.connect() as mysql_conn:
+        get_date_params = {"date_col": f"start_of_month",
+                           "tbl": f"{table}"}
+        latest_date = get_data_from_query(
+            mysql_conn, f'./sql/mysql/query/get_latest_date_from_tbl.sql', get_date_params)
+
+    latest_date = latest_date.values[0][0]
+    query_start_date = latest_date.replace(day=1) + relativedelta(months=-LOWER_REFRESH_MONTHS)
+    query_start_date_str = query_start_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{query_start_date_str}'",
+                  "end_date": f"'{TODAY_STR}'"}
+        sales_invoices = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_monthly_agg_sales_invoices.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {"table": f"{table}", "date_col": "start_of_month",
+                  "start_date": f"'{query_start_date_str}'", "end_date": f"'{TODAY_STR}'"}
+        execute_in_mysql(       
+            mysql_conn, f'./sql/mysql/delete/delete_row_by_date_range.sql', params)
+        mysql_conn.commit()
+
+    with mysql_engine.connect() as mysql_conn:
+        sales_invoices.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     record_data_refresh_log(table)
