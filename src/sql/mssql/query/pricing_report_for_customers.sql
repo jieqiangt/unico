@@ -4,7 +4,7 @@ SELECT
     OITM.FrgnName AS 'foreign_name',
     OITB.ItmsGrpNam AS 'pdt_main_cat',
     OITM.InvntryUom AS 'uom',
-    MAX(OITW.AvgPrice) * 1.25 AS 'breakeven_price',
+    ROUND(MAX(OITW.AvgPrice) * 1.25 * 2, 0) /2 AS 'min_selling_price',
     ROUND(MAX(OITW.AvgPrice) * 1.35 * 2, 0) / 2 AS 'rsp'
 FROM
     OITW
