@@ -2,6 +2,7 @@
 /src/data/logs/*
 /venv
 
+/node
 *.bat
 /notes
 .env

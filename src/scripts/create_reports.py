@@ -1,5 +1,5 @@
 from utils.dbUtils import create_mysql_engine,  execute_in_mysql, get_data_from_query, create_mssql_engine
-from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement, process_ft_pdt_monthly_qty_ts, process_ft_customer_group_top_pdts
+from utils.dataProcessing import process_sales_ops_report, process_procurement_ops_report, process_ft_pdt_summary, process_ft_purchases_alerts, process_ft_sales_orders_alerts, process_ft_pdt_loss_summary, process_int_pdt_purchase_price_ts, process_ft_customer_group_price_check_flagged_orders, process_ft_customer_churn, process_ft_pdt_potential_customers, process_ft_current_processing_movement, process_ft_pdt_monthly_qty_ts, process_ft_customer_group_top_pdts, process_ft_daily_pivot_sales
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -846,3 +846,35 @@ def create_ft_current_warehouse_inv_breakdown():
 
     record_data_refresh_log(table)
     mysql_engine.dispose()
+
+
+def create_ft_pdt_customer_monthly_pivoted_qty():
+    
+    table = 'ft_pdt_customer_monthly_pivoted_qty'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    start_date = date.today().replace(day=1).replace(month=1)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        pivoted_qty = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/{table}.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        params = {'table': table}
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/delete/drop_table.sql', params)
+        execute_in_mysql(mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        pivoted_qty.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    record_data_refresh_log(table)
+    mysql_engine.dispose()
+    

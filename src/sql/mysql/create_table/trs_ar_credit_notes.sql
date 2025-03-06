@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS trs_credit_notes (
+CREATE TABLE IF NOT EXISTS trs_ar_credit_notes (
     doc_date DATE NOT NULL,
     start_of_month DATE NOT NULL,
     doc_num VARCHAR(50) NOT NULL,

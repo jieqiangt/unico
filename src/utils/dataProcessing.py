@@ -1090,21 +1090,20 @@ def process_sales_pricing_report(inv, pdt_industry_pc, file_name):
 
 def process_pricing_report_for_customers(pdt_prices, file_name):
 
-
     with pd.ExcelWriter(f'{file_name}.xlsx', engine='openpyxl') as writer:
 
         for pdt_cat in pdt_prices['pdt_main_cat'].unique():
 
             output_sheet = pdt_prices[pdt_prices['pdt_main_cat'] == pdt_cat]
             output_sheet.columns = pdt_prices.columns
-            
+
             output_sheet = output_sheet.sort_values(
                 by='pdt_name', ascending=False)
             output_sheet.to_excel(writer, sheet_name=pdt_cat,
                                   index=False, header=True, startrow=0)
 
             worksheet = writer.sheets[pdt_cat]
-            
+
             for column in worksheet.columns:
                 auto_adjust_column(worksheet, column, header_row=0)
                 if "price" in column[0].value:
@@ -1113,7 +1112,6 @@ def process_pricing_report_for_customers(pdt_prices, file_name):
                     format_column_to_currency(column)
                 add_borders_to_column(column, num_headers=1)
 
-    
 
 def process_ft_pdt_monthly_qty_ts(pdt_monthly_qty):
 
@@ -1386,11 +1384,9 @@ def get_lat_long_for_bp(bp):
     zipcodes = bp['zipcode']
     latitude_collate = []
     longitude_collate = []
-    
-    
 
     for zipcode in zipcodes:
-        
+
         latitude = np.nan
         longitude = np.nan
 
@@ -1416,8 +1412,10 @@ def get_lat_long_for_bp(bp):
             longitude_collate.append(longitude)
             continue
         else:
-            latitude_collate.append(result['results'][0].get('LATITUDE',np.nan))
-            longitude_collate.append(result['results'][0].get('LONGITUDE',np.nan))
+            latitude_collate.append(
+                result['results'][0].get('LATITUDE', np.nan))
+            longitude_collate.append(
+                result['results'][0].get('LONGITUDE', np.nan))
 
     bp['latitude'] = latitude_collate
     bp['longitude'] = longitude_collate
@@ -1429,5 +1427,30 @@ def process_pivoted_monthly_sales_by_pdt_level(pivoted_revenue, customer_code_li
 
     output = pivoted_revenue.merge(customer_code_list, on='pdt_code', how='left').merge(customer_name_list, on='pdt_code', how='left').merge(
         payment_terms_list, on='pdt_code', how='left').merge(sales_employee_list, on='pdt_code', how='left')
+
+    output.to_csv(f'{file_name}.csv', index=False)
+
+
+def process_ar_discrepancy_investigation(sales_orders, credit_notes, file_name):
+
+    output = pd.concat(
+        [sales_orders, credit_notes], ignore_index=True)
+    output.to_csv(f'{file_name}.csv', index=False)
+
+
+def process_ft_daily_pivot_sales(sales, file_name):
+
+    # sales["date"] = pd.to_datetime(sales["doc_date"]).dt.strftime("%d-%b-%y")
+    # sales.drop(columns=['doc_date'], inplace=True)
+    pivoted_sales = pd.pivot_table(sales, index=['customer_code', 'customer_name', 'customer_group_name', 'payment_terms', 'sales_employee'],
+                                columns="doc_date", values='amount', aggfunc='sum')
+    pivoted_sales.fillna(0,inplace=True)
+    pivoted_sales = pivoted_sales.reindex(sorted(pivoted_sales.columns), axis=1)
+    pivoted_sales.reset_index(inplace=True)
+    pivoted_sales.index.name = None
+    pivoted_sales.columns.name = None
+    new_cols = [col_name.strftime("%d-%b-%y") if isinstance(col_name, pd.Timestamp) else col_name for col_name in pivoted_sales.columns]
+    pivoted_sales.columns = new_cols
+
+    pivoted_sales.to_csv(f'{file_name}.csv', index=False)
     
-    output.to_csv(f'{file_name}.csv',index=False)

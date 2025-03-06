@@ -711,7 +711,7 @@ def init_ft_daily_agg_values_ts():
 
     end_date = date.today()
     end_date_str = end_date.strftime("%Y-%m-%d")
-    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date = end_date.replace(day=1) + relativedelta(months=-15)
     start_date_str = start_date.strftime("%Y-%m-%d")
     
     with mssql_engine.connect() as mssql_conn:
@@ -1144,7 +1144,7 @@ def init_trs_ar_invoices():
     mysql_engine.dispose()
     mssql_engine.dispose()
     
-def init_trs_credit_notes():
+def init_trs_ar_credit_notes():
 
     mssql_engine = create_mssql_engine(**MSSQL_CREDS)
     mysql_engine = create_mysql_engine(**RDS_CREDS)
@@ -1154,12 +1154,12 @@ def init_trs_credit_notes():
     start_date = end_date.replace(day=1) + relativedelta(months=-60)
     start_date_str = start_date.strftime("%Y-%m-%d")
 
-    table = 'trs_credit_notes'
+    table = 'trs_ar_credit_notes'
     with mssql_engine.connect() as mssql_conn:
         params = {"start_date": f"'{start_date_str}'",
                   "end_date": f"'{end_date_str}'"}
         credit_notes = get_data_from_query(
-            mssql_conn, f'./sql/mssql/query/trs_credit_notes.sql', params)
+            mssql_conn, f'./sql/mssql/query/trs_ar_credit_notes.sql', params)
 
     with mysql_engine.connect() as mysql_conn:
         drop_table(mysql_conn, table)
@@ -1806,6 +1806,72 @@ def init_ft_monthly_agg_sales_invoices():
 
     with mysql_engine.connect() as mysql_conn:
         sales_invoices.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_monthly_pdt_total_value():
+    
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    num_months = 12
+    table = 'ft_monthly_pdt_total_value'
+    
+    total_value_collate = []
+    
+    with mssql_engine.connect() as mssql_conn:
+        
+        for month_delta in range(0,num_months+1):
+        
+            current_end_month = end_date.replace(day=1) + relativedelta(months=-month_delta + 1) + relativedelta(days=-1)
+            current_end_month_str = current_end_month.strftime("%Y-%m-%d")
+            params = {"end_of_month": f"'{current_end_month_str}'"}
+            current_month_pdt_total_value = get_data_from_query(
+                mssql_conn, f'./sql/mssql/query/ft_monthly_pdt_total_value.sql', params)
+            
+            total_value_collate.append(current_month_pdt_total_value)
+
+    monthly_pdt_total_value = pd.concat(total_value_collate, ignore_index=True)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        monthly_pdt_total_value.to_sql(
+            table, con=mysql_conn, if_exists='append', index=False)
+
+    mysql_engine.dispose()
+    mssql_engine.dispose()
+    
+def init_ft_sales_receipt_dates_gross_profit():
+
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+    
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+    start_date = end_date.replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+
+    table = 'ft_sales_receipt_dates_gross_profit'
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_sales_receipt_dates_gross_profit.sql', params)
+
+    with mysql_engine.connect() as mysql_conn:
+        drop_table(mysql_conn, table)
+        execute_in_mysql(
+            mysql_conn, f'./sql/mysql/create_table/{table}.sql')
+
+    with mysql_engine.connect() as mysql_conn:
+        credit_notes.to_sql(
             table, con=mysql_conn, if_exists='append', index=False)
 
     mysql_engine.dispose()

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS ft_recent_sales (
     customer_code VARCHAR(25) NOT NULL,
     customer_name VARCHAR(150) NOT NULL,
     customer_group_name VARCHAR(150) NOT NULL,
+    industry VARCHAR(150) NOT NULL,
     pdt_code VARCHAR(25) NOT NULL,
     pdt_name VARCHAR(150) NOT NULL,
     uom VARCHAR(25),

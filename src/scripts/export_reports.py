@@ -1,5 +1,5 @@
 from utils.dbUtils import create_mysql_engine,  execute_in_mysql, get_data_from_query, create_mssql_engine
-from utils.dataProcessing import process_current_inventory_report, process_sales_pricing_report, process_pivoted_monthly_sales_by_pdt_level, process_pricing_report_for_customers
+from utils.dataProcessing import process_current_inventory_report, process_sales_pricing_report, process_pivoted_monthly_sales_by_pdt_level, process_pricing_report_for_customers, process_ar_discrepancy_investigation, process_ft_daily_pivot_sales
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -112,4 +112,45 @@ def export_pivoted_monthly_sales_by_pdt_level():
     process_pivoted_monthly_sales_by_pdt_level(
         pivoted_revenue, customer_code_list, customer_name_list, payment_terms_list, sales_employee_list,  f"{file_name}")
     record_data_refresh_log(f'{file_name}_excel')
+    
+def export_ar_discrepancy_investigation():
+
+    file_name = f'ar_discrepancy_investigation'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    
+    start_date = END_DATE.replace(day=1) + relativedelta(months=-12)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    
+    
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{END_DATE_STR}'"}
+        sales_orders = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_sales_orders_ar_investigation.sql', params)
+        credit_notes = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_credit_notes_ar_investigation.sql', params)
+
+    mssql_engine.dispose()
+    process_ar_discrepancy_investigation(sales_orders, credit_notes,  f"{file_name}")
+    record_data_refresh_log(f'{file_name}_excel')
+    
+def export_ft_daily_pivot_sales():
+    
+    file_name = f'ft_daily_pivot_sales'
+    mssql_engine = create_mssql_engine(**MSSQL_CREDS)
+    mysql_engine = create_mysql_engine(**RDS_CREDS)
+
+    start_date = date.today().replace(day=1).replace(month=1)
+    start_date_str = start_date.strftime("%Y-%m-%d")
+    end_date = date.today()
+    end_date_str = end_date.strftime("%Y-%m-%d")
+
+    with mssql_engine.connect() as mssql_conn:
+        params = {"start_date": f"'{start_date_str}'",
+                  "end_date": f"'{end_date_str}'"}
+        sales = get_data_from_query(
+            mssql_conn, f'./sql/mssql/query/ft_daily_pivot_sales.sql', params)
+        process_ft_daily_pivot_sales(sales,  f"{file_name}")
+
+    mysql_engine.dispose()
     

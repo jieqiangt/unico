@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS ft_sales_orders_alerts (
     customer_code VARCHAR(25) NOT NULL,
     customer_name VARCHAR(255) NOT NULL,
     customer_group_name VARCHAR(255) NOT NULL,
+    industry VARCHAR(25) NOT NULL,
     pdt_code VARCHAR(25) NOT NULL,
     pdt_name VARCHAR(100) NOT NULL,
     processed_pdt_ind TINYINT(1),

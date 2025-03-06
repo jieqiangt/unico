@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS ft_daily_agg_credit_notes (
     qty NUMERIC(10, 2) NOT NULL,
     price NUMERIC(10, 2) NOT NULL,
     amount NUMERIC(10, 2) NOT NULL,
-    PRIMARY KEY (doc_date, customer_code, pdt_code)
+    PRIMARY KEY (doc_date, customer_code, pdt_code, sales_employee_code)
 );

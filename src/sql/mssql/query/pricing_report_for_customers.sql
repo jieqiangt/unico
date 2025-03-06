@@ -4,7 +4,12 @@ SELECT
     OITM.FrgnName AS 'foreign_name',
     OITB.ItmsGrpNam AS 'pdt_main_cat',
     OITM.InvntryUom AS 'uom',
-    ROUND(MAX(OITW.AvgPrice) * 1.25 * 2, 0) /2 AS 'min_selling_price',
+        CASE
+            WHEN OITM.QryGroup2 = 'Y' OR OITB.ItmsGrpNam IN ('FISH','SEAFOOD') THEN ROUND(MAX(OITW.AvgPrice) * 1.30 * 2, 0) /2
+            ELSE ROUND(MAX(OITW.AvgPrice) * 1.25 * 2, 0) /2
+        END AS 'processed_pdt_ind',
+
+    ROUND(MAX(OITW.AvgPrice) * 1.30 * 2, 0) /2 AS 'min_selling_price',
     ROUND(MAX(OITW.AvgPrice) * 1.35 * 2, 0) / 2 AS 'rsp'
 FROM
     OITW
@@ -17,6 +22,7 @@ GROUP BY
     OITM.ItemName,
     OITM.FrgnName,
     OITM.InvntryUom,
-    OITB.ItmsGrpNam
+    OITB.ItmsGrpNam,
+    OITM.QryGroup2
 HAVING
     SUM(OITW.OnHand) - SUM(OITW.IsCommited) <> 0;

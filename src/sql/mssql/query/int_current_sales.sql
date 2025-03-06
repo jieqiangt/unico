@@ -8,6 +8,11 @@ SELECT
         WHEN OCRD.U_AF_CUSTGROUP = '' THEN OCRD.CardName
         ELSE COALESCE (OCRD.U_AF_CUSTGROUP, OCRD.CardName)
     END AS 'customer_group_name',
+    CASE
+            WHEN OOND.IndName IS NULL THEN 'HoReCa'
+            WHEN OOND.IndName = 'BAD DEBT' THEN 'HoReCa'
+            ELSE OOND.IndName
+    END AS 'industry',
     RDR1.ItemCode AS 'pdt_code',
     OITM.ItemName AS 'pdt_name',
     COALESCE (RDR1.unitMsr, RDR1.unitMsr2) AS 'uom',
@@ -23,6 +28,7 @@ FROM
     LEFT JOIN OCRD ON ORDR.CardCode = OCRD.CardCode
     LEFT JOIN OSLP ON ORDR.SlpCode = OSLP.SlpCode
     LEFT JOIN OCRG ON OCRD.GroupCode = OCRG.GroupCode
+    LEFT JOIN OOND ON OCRD.IndustryC = OOND.IndCode
 WHERE
     RDR1.DocDate BETWEEN {{start_date}} AND {{end_date}}
     AND ORDR.DocDate BETWEEN {{start_date}} AND {{end_date}}
