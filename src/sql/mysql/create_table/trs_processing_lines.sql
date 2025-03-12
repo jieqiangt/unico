@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS trs_processing_lines (
-    line_id INT AUTO_INCREMENT UNIQUE,
-    ref_doc_num INT NOT NULL,
+    line_id BIGINT AUTO_INCREMENT UNIQUE,
+    ref_doc_num BIGINT NOT NULL,
+    line_idx SMALLINT NOT NULL,
     processed_by TINYINT,
     process_start DATETIME,
     process_end DATETIME,

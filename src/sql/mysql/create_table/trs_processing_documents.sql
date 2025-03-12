@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS trs_processing_documents (
-    doc_num INT PRIMARY KEY AUTO_INCREMENT,
+    doc_num BIGINT PRIMARY KEY AUTO_INCREMENT,
     doc_date DATE NOT NULL,
     created_by TINYINT NOT NULL,
     last_updated_by TINYINT NOT NULL,
